@@ -3,6 +3,7 @@ apps/*
 log/*
 *~
 config.yml
+.envars
 
 #### INCLUDED FILES
 !apps/.dummy
