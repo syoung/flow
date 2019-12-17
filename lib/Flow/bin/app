@@ -1,0 +1,135 @@
+#!/usr/bin/perl -w
+
+=head2
+
+APPLICATION
+
+ app
+
+PURPOSE
+
+ Manage app files
+
+USAGE
+
+ ./app subcommand [switch] [args] [--help]
+
+ subcommand     :    Mode (a.k.a. subcommand, subroutine) to be called
+               - create : Generate a new app file
+               - desc   : Describe the app file contents
+               - replace: Do text replace on field values in app file
+               - copy   : Copy app file to new app file
+ args     :    Arguments for the selected subcommand
+ --help   :    print help info
+
+EXAMPLES
+
+PROJECTS
+
+# Add project to database
+/agua/apps/bin/cli/flow proj save --projfile ./Project1.proj
+
+# Add workflows to project (and save to database)
+/agua/apps/bin/cli/flow proj saveWorkflow --project Project1 --wkfile ./workflowOne.work
+
+WORKFLOWS
+
+# Create a workflow file with a specified name
+./app create --appfile app/myApp.app --appname myApp
+
+# Create an application file from a file containing the application run command
+./app app loadCmd --cmdfile app/applicationOne.cmd --appfile /workflows/applicationOne.app --name applicationOne
+
+=cut
+
+use strict;
+
+#### USE LIBRARY
+# use Scalar::Util qw(weaken);
+use FindBin qw($Bin);
+use lib "$Bin/../..";
+
+#### EXTERNAL MODULES
+use Term::ANSIColor qw(:constants);
+use Data::Dumper;
+use Getopt::Long;
+
+#### INTERNAL MODULES
+use Conf::Yaml;
+use Flow::App;
+
+#### GET ARGUMENTS
+my @arguments = @ARGV;
+
+#### USAGE
+usage() if not @arguments;
+
+#### GET log, printlog AND help
+my $log         =   2;
+my $printlog    =   5;
+my $help;
+GetOptions (
+    'log=i'             =>  \$log,
+    'printlog=i'        =>  \$printlog,
+    'help'              =>  \$help
+) or die "No options specified. Try '--help'\n";
+usage() if defined $help;
+
+#### SET CONF FILE
+my $installdir  =   $ENV{'FLOW_HOME'};
+if ( not defined $installdir ) {
+  print "Can't find FLOW_HOME environment variable. Exiting\n";
+  exit;
+}
+my $configfile  =   "$installdir/conf/config.yml";
+my $logfile  =   "$installdir/log/app.log";
+my $conf = Conf::Yaml->new(
+    memory      =>  1,
+    inputfile   =>  $configfile,
+    log         =>  $log,
+    printlog    =>  $printlog,
+    logfile     =>  $logfile
+);
+
+#### GET MODE
+my $subcommand = shift @ARGV;
+print "No subcommand provided (try --help)\n" and exit if not defined $subcommand;
+
+#### USAGE
+usage() if $subcommand =~ /^-h$/ or $subcommand =~ /^--help$/;
+
+#### VERIFY MODE
+my $subcommands   =   [ "addParam", "convert", "copy", "create", "deleteParam", "desc", "descParam", "edit", "loadCmd", "loadScrape", "loadScript", "loadUsage", "replace", "wiki" ];
+print "subcommand not supported: $subcommand\n" and exit if not supportedMode($subcommand, $subcommands);
+
+
+my $object = Flow::App->new(
+    conf    =>  $conf,
+    log     =>  $log,
+    printlog=>  $printlog   
+);
+$object->$subcommand();
+
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#                                    SUBROUTINES
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+sub supportedMode {
+    my $subcommand        =   shift;
+    my $subcommands       =   shift;
+    foreach my $expected ( @$subcommands ) {
+        if ( $subcommand eq $expected ) {
+            return 1;
+        }    
+    }
+    
+    return 0;
+}
+
+sub usage {
+    print GREEN;
+    print `perldoc $0`;
+    print RESET;
+    exit;
+}
+

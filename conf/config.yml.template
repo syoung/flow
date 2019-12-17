@@ -1,0 +1,12 @@
+---
+core:
+  ADMINUSER: admin
+  AGUADIR: .flow 
+  AGUAUSER: agua
+  INSTALLDIR: <INSTALLDIR>
+  USERDIR: <USERDIR>
+database:
+  DBFILE: db/flow.sqlite
+  DBTYPE: SQLite
+  TESTDBFILE: db/test.sqlite
+  TESTDBTYPE: SQLite

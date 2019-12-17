@@ -1,0 +1,63 @@
+---
+apps:
+  -
+    appname: MarkDuplicates
+    appnumber: 1
+    parameters: []
+  -
+    appname: markDuplicates
+    appnumber: 2
+    location: /work/node/stephane/depot/picard-tools/picard-tools-1.103/MarkDuplicates.jar
+    parameters:
+      -
+        ordinal: 1
+        paramnumber: 1
+        value: I=${sample}_N_fxmt_flt.bam
+        valuetype: string
+      -
+        argument: O=
+        ordinal: 2
+        paramnumber: 2
+        value: ${sample}_N_rmdup.bam
+        valuetype: string
+      -
+        argument: M=
+        ordinal: 3
+        paramnumber: 3
+        value: ${sample}_N_dup_report.txt
+        valuetype: string
+      -
+        argument: PROGRAM_RECORD_ID=
+        ordinal: 4
+        paramnumber: 4
+        value: 'null'
+        valuetype: string
+      -
+        argument: VALIDATION_STRINGENCY=
+        ordinal: 5
+        paramnumber: 5
+        value: SILENT
+        valuetype: string
+      -
+        argument: REMOVE_DUPLICATES=
+        ordinal: 6
+        paramnumber: 6
+        value: 'true'
+        valuetype: string
+  -
+    appname: cleanDuplicates
+    appnumber: 3
+    location: rm
+    parameters:
+      -
+        ordinal: 1
+        paramnumber: 1
+        value: $cur_dir/${sample}_N_fxmt_flt.ba*
+        valuetype: file
+      -
+        ordinal: '2'
+        paramnumber: 2
+        value: $cur_dir/${sample}_N_dup_report.txt
+        valuetype: file
+workflowname: MarkDuplicates
+workflownumber: '3'

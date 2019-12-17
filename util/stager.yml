@@ -1,0 +1,10 @@
+defaults:
+  package:     flow
+  outputdir:   /repos/public/flow
+stages:
+  1:
+    repodir:     /repos/agua/flow
+    branch:      dev
+  2:
+    repodir:     /repos/public/flow
+    branch:      dev

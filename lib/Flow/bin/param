@@ -1,0 +1,157 @@
+#!/usr/bin/perl -w
+
+=head2
+
+APPLICATION
+
+    param
+
+PURPOSE
+
+    Manage workflow files and run workflows
+
+USAGE
+
+    ./param mode [switch] [args] [--help]
+
+ mode     :    Mode (a.k.a. subcommand, subroutine) to be called
+               - create     : Generate a new param file
+               - desc       : Describe the param file contents
+               - replace    : Do text replace on field values in param file
+               - copy       : Copy param file to new param file
+               - edit       : Edit field values in param file
+ args     :    Arguments for the selected mode
+ --help   :    print help info
+
+EXAMPLES
+
+PROJECTS
+
+# Add project to database
+/agua/apps/bin/cli/flow proj save --projfile ./Project1.proj
+
+# Add workflows to project (and save to database)
+/agua/apps/bin/cli/flow proj saveWorkflow --project Project1 --wkfile ./workflowOne.work
+
+WORKFLOWS
+
+# Create a workflow file with a specified name
+./param create --wkfile /workflows/workflowOne.wk --name workflowOne
+
+# Add an application to workflow file
+./param addApp --wkfile /workflows/workflowOne.wk --appfile /workflows/applicationOne.app --name applicationOne
+
+# Run a single application in a workflow
+./param app run --wkfile /workflows/workflowOne.wk --name applicationOne
+
+# Run all applications in workflow
+./param run --wkfile /workflows/workflowOne.wk 
+
+APPLICATIONS
+
+# Create an application file from a file containing the application run command
+./param app loadCmd --cmdfile /workflows/applicationOne.cmd --appfile /workflows/applicationOne.app --name applicationOne
+
+=cut
+
+use strict;
+#use diagnostics;
+
+#### USE LIBRARY
+use Scalar::Util qw(weaken);
+use FindBin qw($Bin);
+use lib "$Bin/../../lib";
+
+#### EXTERNAL MODULES
+use Term::ANSIColor qw(:constants);
+use Data::Dumper;
+
+#### INTERNAL MODULES
+use Timer;
+use Conf::Yaml;
+use Flow::Parameter;
+
+#### SET CONF FILE
+my $installdir  =   $ENV{'installdir'} || "/a";
+my $configfile  =   "$installdir/conf/config.yml";
+my $logfile  =   "$installdir/log/flow.log";
+my $conf = Conf::Yaml->new(
+    memory      =>  1,
+    inputfile	=>	$configfile,
+    log         =>  2,
+    printlog    =>  2,
+    logfile     =>  $logfile
+);
+
+#### GET ARGUMENTS
+my @arguments = @ARGV;
+usage() if not @arguments;
+#print "param    arguments: @arguments\n";
+
+#### GET MODE
+my $mode = shift @ARGV;
+#print "mode: $mode\n";
+print "No mode provided (try --help)\n" and exit if not defined $mode;
+usage() if $mode =~ /^-h$/ or $mode =~ /^--help$/;
+#print "mode: $mode\n";
+
+#### VERIFY MODE
+my $modes   =   [ "create", "desc", "replace", "copy", "edit" ];
+print "mode not supported: $mode\n" and exit if not supportedMode($mode, $modes);
+
+if ( $ARGV[0] !~ /^--/ ) {
+
+    #### GET FILE
+    my $file = shift @ARGV;
+    usage() if $file =~ /^-h$/ or $file =~ /^--help$/;
+    #print "param    Can't find file: $file\n" and exit if not -f $file;
+    #print "param    file: $file\n";
+        
+    #### MANAGE INDIVIDUAL OR NESTED WORKFLOW FILES
+    if ( $file =~ /\.param$/ ) {
+        my $param = Flow::Parameter->new(
+            paramfile   =>  $file,
+            conf        =>  $conf
+        );
+        $param->getopts();
+        $param->$mode();    
+    }
+    else
+    {
+        print "param    file type '$file' not recognised (must be .param)\n";
+    }
+}
+else {
+    my $object = Flow::Param->new(
+        conf        =>  $conf
+    );
+    $object->getopts();
+    $object->$mode();
+    
+}
+
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#                                    SUBROUTINES
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+sub supportedMode {
+    my $mode        =   shift;
+    my $modes       =   shift;
+    foreach my $expected ( @$modes ) {
+        if ( $mode eq $expected ) {
+            return 1;
+        }    
+    }
+    
+    return 0;
+}
+
+sub usage {
+    print GREEN;
+    print `perldoc $0`;
+    print RESET;
+    exit;
+}
+
+
+

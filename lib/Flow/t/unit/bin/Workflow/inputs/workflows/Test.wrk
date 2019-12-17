@@ -1,0 +1,18 @@
+---
+workflowname: Test
+apps:
+  -
+    appname: bcltofastq
+    description: 'Create FASTQ files from BCL files'
+    installdir: /nfs/sw/apps/bcl2fastq
+    location: bin/bcl2fastq
+    packagename: metagenomics
+    parameters:
+      -
+        argument: --inputdir
+        description: 'Location of input directory'
+        ordinal: '1'
+        paramname: inputdir
+        value: /lustre/scratch/Padmini.Ramachandran/metagenomics
+        valuetype: string
+    apptype: converter

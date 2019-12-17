@@ -1,0 +1,208 @@
+#!/usr/bin/env perl
+
+=head2
+
+APPLICATION
+
+    flow
+
+PURPOSE
+
+    Create, run and monitor workflows
+
+USAGE: flow <subcommand> [switch] [Options] [--help]
+
+ subcommand   String :
+
+=over 2
+
+    list            List all projects and contained workflows
+    addproject      Add a new project
+    deleteproject   Delete a project
+    addworkflow     Add a workflow to an existing project
+    deleteworkflow  Delete a workflow from a project
+    addapp          Add an application to a workflow in an existing project
+    deleteapp       Delete an application from a workflow
+
+=back
+
+ package      String :    Name of package to install
+
+ Options:
+
+=over 2
+
+ subcommand     :    Type of workflow object (work|app|param)
+ switch   :    Nested object (e.g., work app, app param)
+ args     :    Arguments for the selected subcommand
+ --help   :    print help info
+
+=back
+
+EXAMPLES
+
+ # Add project to database 
+ flow addproject Project1  
+ 
+ # Add workflow 'Workflow1' file to project 'Project1'  
+ flow addworkflow Project1 ./workflow1.wrk  
+ 
+ # Create a workflow file with a specified name
+ ./flow work create --wkfile /workflows/workflowOne.wk --name workflowOne
+ 
+ # Add an application to workflow file
+ ./flow work addapp --wkfile /workflows/workflowOne.wk --appfile /workflows/applicationOne.app --name applicationOne
+ 
+ # Run a single application in a workflow
+ ./flow work app run --wkfile /workflows/workflowOne.wk --name applicationOne
+ 
+ # Run all applications in workflow
+ ./flow work run --wkfile /workflows/workflowOne.wk 
+ 
+ # Create an application file from a file containing the application run command
+ ./flow app loadCmd --cmdfile /workflows/applicationOne.cmd --appfile /workflows/applicationOne.app --name applicationOne
+ 
+=cut
+
+use strict;
+#use diagnostics;
+
+use JSON;
+
+### USE LIBRARY
+# use Scalar::Util qw(weaken);
+use FindBin qw($Bin);
+use lib "$Bin/../..";
+
+#### EXTERNAL MODULES
+use Term::ANSIColor qw(:constants);
+use Data::Dumper;
+
+#### INTERNAL MODULES
+use Util::Timer;
+use Conf::Yaml;
+use Flow::Main;
+
+#### GET log, printlog AND help
+my $log = getArgument( \@ARGV, ["--log", "-l"] ) || 2;
+my $printlog = getArgument( \@ARGV, ["--printlog", "-p"] ) || 5;
+my $help = getArgument( \@ARGV, ["--help", "-h"] );
+usage() if $help;
+
+#### SET CONF FILE
+my $installdir  =   $ENV{'FLOW_HOME'};
+if ( not defined $installdir ) {
+  print "Can't find FLOW_HOME environment variable. Exiting\n";
+  exit;
+}
+my $configfile  =   "$installdir/conf/config.yml";
+my $logfile  =   "$installdir/log/flow.log";
+my $conf = Conf::Yaml->new(
+    memory      =>  1,
+    inputfile	=>	$configfile,
+    log         =>  $log,
+    printlog    =>  $printlog,
+    logfile     =>  $logfile
+);
+
+#### GET ARGUMENTS
+usage() if not @ARGV;
+
+#### BLOCK NON-ROOT IF --user DIFFERS FROM USER
+my $username = &getUsername(\@ARGV);
+&checkRoot if defined $username;
+
+#### CHECK SUBCOMMAND
+my $subcommand = shift @ARGV;
+print "No subcommand provided (try --help)\n" and exit if not defined $subcommand;
+usage() if $subcommand =~ /^-h$/ or $subcommand =~ /^--help$/;
+usage() if $subcommand !~ /^(list|add|delete|load|desc|edit|insert|run|show)/;
+
+#### GET METHOD
+my $method = $subcommand;
+if ( $subcommand =~ /^(add|delete|load|edit|insert|run)/ ) {
+    $subcommand =~ /^(add|delete|load|edit|insert|run)(.+)$/;
+    $method = $1 . uc(substr($2, 0, 1)) . substr($2, 1); 
+} 
+
+#### GET ARGUMENTS
+my $arguments = [];
+while ( $ARGV[0] and $ARGV[0] !~ /^-/ ) {
+    push(@$arguments, shift @ARGV);
+}
+
+my $object = Flow::Main->new(
+    conf        =>  $conf,
+    args        =>  $arguments,
+    log         =>  $log,
+    printlog    =>  $printlog,
+    logfile     =>  $logfile
+);
+$object->getopts();
+$object->$method( @$arguments );
+    
+
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#                                    SUBROUTINES
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+sub getArgument {
+  my $args = shift;
+  my $names = shift;
+
+  for (my $i = 0; $i < @$args; $i++) {
+    my $argument = $$args[$i];
+
+    for (my $k = 0; $k < @$names; $k++) {
+      my $name = $$names[$k];
+      $name =~ s/\-/\-/g;
+    
+      if ( $$args[$i] eq  $name ) {
+        if ( $name =~ /^(--help|-h)$/ ) {
+          return 1;
+        }
+        elsif ( $i == @$args - 1 or $$args[$i + 1] !~ /^\d+$/ ) { 
+          print "Argument '$name' requires an integer value\n";
+          exit;
+        }
+        else {
+          my $value = $$args[$i + 1];   
+          splice( @$args, $i, 2);
+          return $value;
+        }
+      } 
+    }
+  }
+}
+
+sub checkRoot {
+  my $whoami = `whoami`;
+  $whoami =~ s/\s+$//;
+  #print "whoami: $whoami\n";
+  if ( not $whoami eq "root" and defined $username and $username ne $whoami ) {
+    print "You must be root to create projects/workflows in another user's name ($username)\n";
+    exit;
+  }
+}
+
+sub getUsername {
+  my $argv    =   shift;
+  for ( my $i = 0; $i < @$argv; $i++ ) {
+    if ( $$argv[$i] eq "--username" and defined $$argv[$i + 1] ) {
+        return $$argv[$i + 1];
+    }
+  }
+  
+  return undef;    
+}
+
+sub usage
+{
+  print GREEN;
+  print `perldoc $0`;
+  print RESET;
+  exit;
+}
+
+
+

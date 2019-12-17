@@ -1,0 +1,8 @@
+#### EXCLUDED FILES 
+apps/*
+log/*
+*~
+
+#### INCLUDED FILES
+!apps/.dummy
+!log/.dummy

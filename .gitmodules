@@ -1,0 +1,24 @@
+[submodule "lib/Conf"]
+	path = lib/Conf
+	url = https://github.com/syoung/flow-conf
+[submodule "lib/DBase"]
+	path = lib/DBase
+	url = https://github.com/syoung/flow-dbase
+[submodule "lib/Engine"]
+	path = lib/Engine
+	url = https://github.com/syoung/flow-engine
+[submodule "lib/Exchange"]
+	path = lib/Exchange
+	url = https://github.com/syoung/flow-exchange
+[submodule "lib/Ops"]
+	path = lib/Ops
+	url = https://github.com/syoung/flow-ops
+[submodule "lib/Table"]
+	path = lib/Table
+	url = https://github.com/syoung/flow-table
+[submodule "lib/Test"]
+	path = lib/Test
+	url = https://github.com/syoung/flow-test
+[submodule "lib/Util"]
+	path = lib/Util
+	url = https://github.com/syoung/flow-util

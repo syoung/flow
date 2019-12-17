@@ -1,0 +1,76 @@
+---
+apps:
+  -
+    appname: AddReadGroups
+    appnumber: 1
+    parameters: []
+  -
+    appname: addReadGroups
+    appnumber: 2
+    location: /work/node/stephane/depot/picard-tools/picard-tools-1.103/AddOrReplaceReadGroups.jar
+    parameters:
+      -
+        ordinal: 1
+        paramnumber: 1
+        value: RGPL=Illumina
+        valuetype: string
+      -
+        argument: RGLB=
+        ordinal: 2
+        paramnumber: 2
+        value: BWA
+        valuetype: string
+      -
+        argument: RGPU=
+        ordinal: 3
+        paramnumber: 3
+        value: GRP1
+        valuetype: string
+      -
+        argument: RGSM=
+        ordinal: 4
+        paramnumber: 4
+        value: GP1
+        valuetype: string
+      -
+        argument: I=
+        ordinal: 5
+        paramnumber: 5
+        value: ${sample}_N_rmdup.bam
+        valuetype: string
+      -
+        argument: O=
+        ordinal: 6
+        paramnumber: 6
+        value: ${sample}_N_rmdup_grp.bam
+        valuetype: string
+      -
+        argument: SO=
+        ordinal: 7
+        paramnumber: 7
+        value: coordinate
+        valuetype: string
+      -
+        argument: CREATE_INDEX=
+        ordinal: 8
+        paramnumber: 8
+        value: 'true'
+        valuetype: string
+      -
+        argument: VALIDATION_STRINGENCY=
+        ordinal: 9
+        paramnumber: 9
+        value: SILENT
+        valuetype: string
+  -
+    appname: cleanReadGroups
+    appnumber: 3
+    location: rm
+    parameters:
+      -
+        ordinal: 1
+        paramnumber: 1
+        value: $cur_dir/${sample}_N_rmdup.ba*
+        valuetype: file
+workflowname: AddReadGroups
+workflownumber: '4'

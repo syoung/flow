@@ -1,0 +1,5 @@
+# DON'T EXPORT THESE FILES AND DIRS
+.gitattributes    export-ignore
+.gitmodules       export-ignore
+conf/config.yml   export-ignore
+db/db.sqlite      export-ignore

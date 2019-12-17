@@ -1,0 +1,53 @@
+export BIOREPO_HOME=/Users/kbsf633/localrepos/flow/apps/biorepo/latest
+export PATH=/Users/kbsf633/localrepos/flow/apps/biorepo/latest/bin:$PATH
+export PERL5LIB=/Users/kbsf633/localrepos/flow/apps/biorepo/latest/lib:$PERL5LIB
+
+export FLOW_HOME=/Users/kbsf633/localrepos/flow
+export PATH=/Users/kbsf633/localrepos/flow/bin:$PATH
+export PATH=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/bin:$PATH
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/site_perl/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/lib:$PERL5LIB
+
+export FLOW_HOME=/Users/kbsf633/localrepos/flow
+export PATH=/Users/kbsf633/localrepos/flow/bin:$PATH
+export PATH=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/bin:$PATH
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/site_perl/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/lib:$PERL5LIB
+
+export FLOW_HOME=/Users/kbsf633/localrepos/flow
+export PATH=/Users/kbsf633/localrepos/flow/bin:$PATH
+export PATH=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/bin:$PATH
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/site_perl/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/lib:$PERL5LIB
+
+export FLOW_HOME=/Users/kbsf633/localrepos/flow
+export PATH=/Users/kbsf633/localrepos/flow/bin:$PATH
+export PATH=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/bin:$PATH
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/site_perl/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/lib:$PERL5LIB
+
+export FLOW_HOME=/Users/kbsf633/localrepos/flow
+export PATH=/Users/kbsf633/localrepos/flow/bin:$PATH
+export PATH=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/bin:$PATH
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/site_perl/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/lib:$PERL5LIB
+
+export FLOW_HOME=/Users/kbsf633/localrepos/flow
+export PATH=/Users/kbsf633/localrepos/flow/bin:$PATH
+export PATH=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/bin:$PATH
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/site_perl/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/lib:$PERL5LIB
+
+export FLOW_HOME=/Users/kbsf633/localrepos/flow
+export PATH=/Users/kbsf633/localrepos/flow/bin:$PATH
+export PATH=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/bin:$PATH
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/perl/perls/perl-5.30.1/lib/site_perl/5.30.1:$PERL5LIB
+export PERL5LIB=/Users/kbsf633/localrepos/flow/lib:$PERL5LIB
+

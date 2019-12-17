@@ -1,0 +1,42 @@
+{
+   "workflownumber" : "1",
+   "workflowname" : "Download",
+   "projectname" : "PanCancer",
+   "description" : "Use GeneTorrent to download files from CGHub",
+   "username" : "syoung",
+   "apps" : [
+      {
+         "executor" : "source /agua/apps/pancancer/envars.sh && ",
+         "parameters" : [
+            {
+               "paramname" : "volume",
+               "category" : "directory",
+               "paramnumber" : "1",
+               "description" : "Path to the base directory containing input file subfolders",
+               "ordinal" : "1",
+               "paramtype" : "String",
+               "valuetype" : "input"
+            },
+            {
+               "paramname" : "uuid",
+               "paramnumber" : "2",
+               "category" : "id",
+               "ordinal" : "2",
+               "description" : "Unique identifier for the sample",
+               "paramtype" : "String",
+               "valuetype" : "input"
+            }
+         ],
+         "installdir" : "/agua/apps/pancancer",
+         "appnumber" : 1,
+         "description" : "Run gtdownload",
+         "linkurl" : "http://www.github.com/annaisystems/pancancer",
+         "apptype" : "aligner",
+         "appname" : "download",
+         "packagename" : "pancancer",
+         "location" : "bin/job_download.sh",
+         "version" : "0.0.1"
+      }
+   ]
+}
+

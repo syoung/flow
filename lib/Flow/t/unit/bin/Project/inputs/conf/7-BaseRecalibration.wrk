@@ -1,0 +1,90 @@
+---
+apps:
+  -
+    appname: BaseRecalibration
+    appnumber: 1
+    parameters: []
+  -
+    appname: recalibrateBase
+    appnumber: 2
+    location: /work/knode05/milanesej/GenomeAnalysisTK-2.8-1/GenomeAnalysisTK.jar
+    parameters:
+      -
+        argument: -T
+        ordinal: 1
+        paramnumber: 1
+        value: BaseRecalibrator
+        valuetype: string
+      -
+        argument: -I
+        ordinal: 2
+        paramnumber: 2
+        value: ${sample}_N_realigned.bam
+        valuetype: string
+      -
+        argument: -R
+        ordinal: 3
+        paramnumber: 3
+        value: $ref
+        valuetype: string
+      -
+        argument: -o
+        ordinal: 4
+        paramnumber: 4
+        value: ${sample}_N_recal_data.grp
+        valuetype: string
+      -
+        argument: -knownSites
+        ordinal: 5
+        paramnumber: 5
+        value: $phase_indels
+        valuetype: string
+      -
+        argument: -knownSites
+        ordinal: 6
+        paramnumber: 6
+        value: $dbsnp
+        valuetype: string
+      -
+        argument: -knownSites
+        ordinal: 7
+        paramnumber: 7
+        value: $stand_indels
+        valuetype: string
+  -
+    appname: printReads
+    appnumber: 3
+    location: /work/knode05/milanesej/GenomeAnalysisTK-2.8-1/GenomeAnalysisTK.jar
+    parameters:
+      -
+        argument: -T
+        ordinal: 1
+        paramnumber: 1
+        value: PrintReads
+        valuetype: string
+      -
+        argument: -I
+        ordinal: 2
+        paramnumber: 2
+        value: ${sample}_N_realigned.bam
+        valuetype: string
+      -
+        argument: -R
+        ordinal: 3
+        paramnumber: 3
+        value: $ref
+        valuetype: string
+      -
+        argument: -o
+        ordinal: 4
+        paramnumber: 4
+        value: ${sample}_N_realigned_recal.bam
+        valuetype: string
+      -
+        argument: -BQSR
+        ordinal: 5
+        paramnumber: 5
+        value: ${sample}_N_recal_data.grp
+        valuetype: string
+workflowname: BaseRecalibration
+workflownumber: '7'

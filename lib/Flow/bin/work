@@ -1,0 +1,127 @@
+#!/usr/bin/perl -w
+
+=head2
+
+APPLICATION
+
+    work
+
+PURPOSE
+
+    Manage workflow files and run workflows
+
+USAGE
+
+    ./work subcommand [switch] [args] [--help]
+
+ subcommand     :    Mode (a.k.a. subcommand, subroutine) to be called
+               - create     : Generate a new work file
+               - desc       : Describe the work file contents
+               - replace    : Do text replace on field values in work file
+               - copy       : Copy work file to new work file
+               - save       : Save workflow to database  
+               - edit       : Edit fields in workflow
+               - run        : Run workflow
+               - desc       : Describe workflow
+               - wiki       : Print short summary of workflow
+               - moveApp    : Change order of execution of app in workflow
+               - addApp     : Add app to workflow
+               - editApp    : Edit app in workflow
+               - loadScript : Add apps from a script file
+
+ args     :    Arguments for the selected subcommand
+ --help   :    print help info
+
+EXAMPLES
+
+# Create a workflow file with a specified name
+./work create --wkfile /workflows/workflowOne.wk --name workflowOne
+
+# Add an application to workflow file
+./work addApp --wkfile /workflows/workflowOne.wk --workfile /workflows/applicationOne.work --name applicationOne
+
+# Run a single application in a workflow
+./work run --wkfile /workflows/workflowOne.wk --name applicationOne
+
+# Run all applications in workflow
+./work run --wkfile /workflows/workflowOne.wk 
+
+=cut
+
+use strict;
+#use diagnostics;
+
+#### USE LIBRARY
+use Scalar::Util qw(weaken);
+use FindBin qw($Bin);
+use lib "$Bin/../../lib";
+
+#### EXTERNAL MODULES
+use Term::ANSIColor qw(:constants);
+use Data::Dumper;
+
+#### INTERNAL MODULES
+use Timer;
+use Conf::Yaml;
+use Flow::Workflow;
+
+#### SET CONF FILE
+my $installdir  =   $ENV{'installdir'} || "/a";
+my $configfile  =   "$installdir/conf/config.yml";
+my $logfile  =   "$installdir/log/flow.log";
+my $conf = Conf::Yaml->new(
+    memory      =>  1,
+    inputfile	=>	$configfile,
+    log         =>  2,
+    printlog    =>  2,
+    logfile     =>  $logfile
+);
+
+#### GET ARGUMENTS
+my @arguments = @ARGV;
+
+#### USAGE
+usage() if not @arguments;
+
+#### GET MODE
+my $subcommand = shift @ARGV;
+print "No subcommand provided (try --help)\n" and exit if not defined $subcommand;
+
+#### USAGE
+usage() if $subcommand =~ /^-h$/ or $subcommand =~ /^--help$/;
+
+#### VERIFY MODE
+my $subcommands   =   [ "save", "create", "edit", "copy", "run", "desc", "wiki", "replace", "moveApp", "addApp", "deleteApp", "editApp", "loadScript", "editParameter"];
+print "subcommand not supported: $subcommand\n" and exit if not supportedMode($subcommand, $subcommands);
+
+my $object = Flow::Workflow->new(
+    conf        =>  $conf
+);
+
+$object->$subcommand();
+
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#                                    SUBROUTINES
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+sub supportedMode {
+    my $subcommand        =   shift;
+    my $subcommands       =   shift;
+    foreach my $expected ( @$subcommands ) {
+        if ( $subcommand eq $expected ) {
+            return 1;
+        }    
+    }
+    
+    return 0;
+}
+
+sub usage {
+    print GREEN;
+    print `perldoc $0`;
+    print RESET;
+    exit;
+}
+
+
+

@@ -1,0 +1,35 @@
+---
+apps:
+  -
+    appname: download
+    appnumber: 1
+    description: 'Run gtdownload'
+    executor: 'source /agua/apps/pancancer/envars.sh && '
+    installdir: /agua/apps/pancancer
+    linkurl: http://www.github.com/annaisystems/pancancer
+    location: bin/job_download.sh
+    packagename: pancancer
+    parameters:
+      -
+        category: directory
+        description: 'Path to the base directory containing input file subfolders'
+        ordinal: '1'
+        paramname: volume
+        paramnumber: '1'
+        paramtype: String
+        valuetype: input
+      -
+        category: id
+        description: 'Unique identifier for the sample'
+        ordinal: '2'
+        paramname: uuid
+        paramnumber: '2'
+        paramtype: String
+        valuetype: input
+    apptype: aligner
+    version: 0.0.1
+description: 'Use GeneTorrent to download files from CGHub'
+workflowname: Download
+workflownumber: '1'
+projectname: PanCancer
+username: testuser

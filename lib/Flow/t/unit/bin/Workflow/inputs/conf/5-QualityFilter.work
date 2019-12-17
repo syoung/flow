@@ -1,0 +1,61 @@
+---
+apps:
+  -
+    appname: QualityFilter
+    appnumber: 1
+    parameters: []
+  -
+    appname: qualityFilter
+    appnumber: 2
+    location: /work/node/stephane/depot/bin/bamtools
+    parameters:
+      -
+        ordinal: 1
+        paramnumber: 1
+        value: filter
+        valuetype: string
+      -
+        argument: -mapQuality
+        ordinal: 2
+        paramnumber: 2
+        value: '">=60"'
+        valuetype: string
+      -
+        argument: -in
+        ordinal: 3
+        paramnumber: 3
+        value: ${sample}_N_rmdup_grp.bam
+        valuetype: string
+      -
+        argument: -out
+        ordinal: 4
+        paramnumber: 4
+        value: ${sample}_N_rmdup_grp_rmlq.bam
+        valuetype: string
+  -
+    appname: indexBam
+    appnumber: 3
+    location: samtools
+    parameters:
+      -
+        ordinal: 1
+        paramnumber: 1
+        value: index
+        valuetype: string
+      -
+        ordinal: '2'
+        paramnumber: 2
+        value: ${sample}_N_rmdup_grp_rmlq.bam
+        valuetype: string
+  -
+    appname: cleanBam
+    appnumber: 4
+    location: rm
+    parameters:
+      -
+        ordinal: 1
+        paramnumber: 1
+        value: $cur_dir/${sample}_N_rmdup_grp.ba*
+        valuetype: file
+name: QualityFilter
+number: '5'
