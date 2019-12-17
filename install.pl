@@ -43,7 +43,7 @@ my $os = $^O;
 chdir( $Bin );
 
 ##    1. INSTALL ALL SUBMODULES
-my $command = "git submodule update --init --recursive --remote";
+my $command = "git submodule update lib";
 print "DOING $command\n";
 system( $command );
 
