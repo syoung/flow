@@ -2,6 +2,7 @@
 apps/*
 log/*
 *~
+config.yml
 
 #### INCLUDED FILES
 !apps/.dummy
