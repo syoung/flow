@@ -2,6 +2,9 @@
 apps/*
 log/*
 *~
+db.sqlite
+config.yml
+.envars
 
 #### INCLUDED FILES
 !apps/.dummy
