@@ -58,7 +58,7 @@ copyConfigFile( $os );
 system( ". $Bin/envars.sh" );
 
 ##    6. INSTALL repo
-installBiorepo();
+installRepo();
 
 #### SUBROUTINES
 sub updateSubmodules {
