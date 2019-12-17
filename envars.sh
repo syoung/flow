@@ -15,7 +15,8 @@ declare -a COMMANDS=(
 	"export PERL5LIB=$DIR/lib:\$PERL5LIB"
 )
 
-rm -fr ~/.envars
+echo "\nCreating $DIR/envars:"
+rm -fr $DIR/.envars
 for ((i = 0; i < ${#COMMANDS[@]} + 1; i++))
 do
 	COMMAND=${COMMANDS[$i]}

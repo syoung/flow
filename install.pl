@@ -59,14 +59,14 @@ copyConfigFile( $os );
 ##    5. RUN envars.sh TO SET ~/.envars FILE
 system( ". $Bin/envars.sh" );
 
-# ##    6. INSTALL biorepo
-# my $biorepodir = "$Bin/apps/biorepo";
-# mkpath( $biorepodir ) if not -d $biorepodir;
-# chdir( $biorepodir );
-# my $biorepourl = "https://github.com/syoung/biorepo";
-# system( "git clone $biorepourl latest" );
-# chdir( "$biorepodir/latest" );
-# system( "./install.pl dependent" );
+##    6. INSTALL biorepo
+my $biorepodir = "$Bin/apps/biorepo";
+mkpath( $biorepodir ) if not -d $biorepodir;
+chdir( $biorepodir );
+my $biorepourl = "https://github.com/syoung/biorepo";
+system( "git clone $biorepourl latest" );
+chdir( "$biorepodir/latest" );
+system( "./install.pl dependent" );
 
 #### SUBROUTINES
 
@@ -74,7 +74,7 @@ sub copyDbFile {
   my $dbtemplate = "$Bin/db/db.sqlite.template";
   my $dbfile = "$Bin/db/db.sqlite";
   if ( -f $dbfile ) {
-    print "Skipping copy dbfile as file already exists: $dbfile\n";
+    print "\nSkipping copy dbfile as file already exists: $dbfile\n";
   }
   else {
     print "Copying $dbtemplate to $dbfile\n";
@@ -88,7 +88,7 @@ sub copyConfigFile {
   my $configtemplate = "$Bin/conf/config.yml.template";
   my $configfile = "$Bin/conf/config.yml";
   if ( -f $configfile ) {
-    print "Skipping copy configfile as file already exists: $configfile\n";
+    print "\nSkipping copy configfile as file already exists: $configfile\n";
   }
   else {
     print "Copying $configtemplate to $configfile\n";
@@ -146,6 +146,7 @@ sub checkoutPerlBranch {
   my $branch = undef;
   my $archname = undef;
   
+  print "\n";
   if ( $os eq "darwin" ) {
     print "Loading embedded perl branch for OSX\n";
     $branch = "osx10.14.6";
@@ -196,7 +197,6 @@ sub checkoutPerlBranch {
     print "perl branch: $branch-$archname\n";
 
     use FindBin qw($Bin);
-    print "Bin: $Bin\n";
     my $command = "cd $Bin/perl; git checkout $branch-$archname";
     print "$command\n";
     `$command`;
