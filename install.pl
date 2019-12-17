@@ -18,7 +18,7 @@
 #     - RUNS envars-standalone.sh IN ORDER TO AUTOMATICALLY LOAD THE FOLLOWING MODIFIED ENVIRONMENT VARIABLES ON CONNNECTION TO THE CONTAINER:
 #       -  THE 'PATH' ENVIRONMENT VARIABLE, ENABLING ACCESS TO: 
 #         - THE EMBEDDED PERL EXECUTABLE
-#         - THE bin/biorepo EXECUTABLE
+#         - THE bin/repo EXECUTABLE
 #       -  THE 'PERL5LIB' ENVIRONMENT VARIABLE, ENABLING ACCESS TO: 
 #         -  THE PERL MODULES IN THE perl DIRECTORY
 #         -  THE PERL MODULES IN THE lib DIRECTORY
@@ -30,7 +30,7 @@
 ##    3. COPY DB TEMPLATE FROM TEMPLATE IF NOT EXISTS
 ##    4. COPY CONFIG FILE FROM TEMPLATE IF NOT EXISTS
 ##    5. RUN envars.sh TO SET ~/.envars FILE
-##    6. INSTALL biorepo
+##    6. INSTALL repo
 
 use FindBin qw($Bin);
 use File::Copy qw(move);
@@ -57,7 +57,7 @@ copyConfigFile( $os );
 ##    5. RUN envars.sh TO SET ~/.envars FILE
 system( ". $Bin/envars.sh" );
 
-##    6. INSTALL biorepo
+##    6. INSTALL repo
 installBiorepo();
 
 #### SUBROUTINES
@@ -142,7 +142,6 @@ sub replaceFields {
   return $contents;
 }
 
-
 sub checkoutPerlBranch {
   my $os = shift;
   my $branch = undef;
@@ -205,17 +204,17 @@ sub checkoutPerlBranch {
   }
 }  
 
-sub installBiorepo {
-  my $biorepodir = "$Bin/apps/biorepo";
-  if ( -d $biorepodir ) {
-    print "Skipping install biorepo because directory exists: $biorepodir\n";
+sub installRepo {
+  my $repodir = "$Bin/apps/repo";
+  if ( -d $repodir ) {
+    print "Skipping install repo because directory exists: $repodir\n";
   }
   else {
-    mkpath( $biorepodir ) if not -d $biorepodir;
-    chdir( $biorepodir );
-    my $biorepourl = "https://github.com/syoung/biorepo";
-    system( "git clone $biorepourl latest" );
-    chdir( "$biorepodir/latest" );
+    mkpath( $repodir ) if not -d $repodir;
+    chdir( $repodir );
+    my $repourl = "https://github.com/syoung/repo";
+    system( "git clone $repourl latest" );
+    chdir( "$repodir/latest" );
     system( "./install.pl dependent" );
   }
 }
