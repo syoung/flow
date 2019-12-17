@@ -43,9 +43,7 @@ my $os = $^O;
 chdir( $Bin );
 
 ##    1. INSTALL ALL SUBMODULES
-my $command = "git submodule update lib";
-print "DOING $command\n";
-system( $command );
+updateSubmodules ();
 
 ##    2. CHECKOUT OS-SPECIFIC BRANCH OF perl SUBMODULE
 checkoutPerlBranch( $os );
@@ -60,15 +58,26 @@ copyConfigFile( $os );
 system( ". $Bin/envars.sh" );
 
 ##    6. INSTALL biorepo
-my $biorepodir = "$Bin/apps/biorepo";
-mkpath( $biorepodir ) if not -d $biorepodir;
-chdir( $biorepodir );
-my $biorepourl = "https://github.com/syoung/biorepo";
-system( "git clone $biorepourl latest" );
-chdir( "$biorepodir/latest" );
-system( "./install.pl dependent" );
+installBiorepo();
 
 #### SUBROUTINES
+sub updateSubmodules {
+  my $commands = [
+    "git submodule update lib/Conf",
+    "git submodule update lib/DBase",
+    "git submodule update lib/Engine",
+    "git submodule update lib/Exchange",
+    "git submodule update lib/Ops",
+    "git submodule update lib/Package",
+    "git submodule update lib/Table",
+    "git submodule update lib/Test",
+    "git submodule update lib/Util",
+  ];
+  foreach my $command ( @$commands ) {
+    print "$command\n";
+    system( $command );
+  }
+}
 
 sub copyDbFile {
   my $dbtemplate = "$Bin/db/db.sqlite.template";
@@ -203,6 +212,19 @@ sub checkoutPerlBranch {
   }
 }  
 
-
+sub installBiorepo {
+  my $biorepodir = "$Bin/apps/biorepo";
+  if ( -d $biorepodir ) {
+    print "Skipping install biorepo because directory exists: $biorepodir\n";
+  }
+  else {
+    mkpath( $biorepodir ) if not -d $biorepodir;
+    chdir( $biorepodir );
+    my $biorepourl = "https://github.com/syoung/biorepo";
+    system( "git clone $biorepourl latest" );
+    chdir( "$biorepodir/latest" );
+    system( "./install.pl dependent" );
+  }
+}
 
 

@@ -25,3 +25,6 @@
 [submodule "perl"]
 	path = perl
 	url = https://github.com/syoung/flow-perl
+[submodule "lib/Util"]
+	path = lib/Util
+	url = https://github.com/syoung/flow-util
