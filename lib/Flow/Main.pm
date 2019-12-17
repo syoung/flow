@@ -334,7 +334,7 @@ method desc ( $projectname ) {
 }
 
 method orderOutput ( $output ) {
-	# $self->logDebug( "output", $output );
+	$self->logDebug( "output", $output );
 	# my ( $head, $workflows ) = $output =~ /(^---.+\n)(workflows:.+)/msg;
 	# $self->logDebug( "head", $head );
 	# $self->logDebug( "workflows", $workflows );
@@ -839,6 +839,11 @@ method getOptions ( $argv, $arguments ) {
           $options->{$argument} = $$argv[$i + 1];
         }
       }
+      else {
+      	$arg =~ s/^\-+//;
+        $options->{$arg} = $$argv[$i + 1];
+      }
+
     }
   }
 
@@ -854,8 +859,6 @@ method addWorkflow ( $projectname, $wkfile ) {
 	];
 	my $options = $self->getOptions( \@ARGV, $formats );
 	$self->logDebug("options", $options);
-
-exit;
 
 	#### SET USERNAME AND OWNER
 	my $username    =   $self->setUsername();
@@ -902,7 +905,7 @@ exit;
 	$self->logDebug("workflowname", $workflowname);
 
 	if ( not defined $workflowname or $workflowname eq "" ) {
-		( $workflowname ) = $wkfile =~ /^([^\/]+)\.wrk$/;
+		( $workflowname ) = $wkfile =~ /([^\/]+)\.wrk$/;
 		$self->logDebug("workflowname FROM FILE", $workflowname);
 		if ( not defined $workflowname ) {
 			print "Workflow name is empty or not defined in file: '$wkfile'\n";

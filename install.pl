@@ -18,7 +18,7 @@
 #     - RUNS envars-standalone.sh IN ORDER TO AUTOMATICALLY LOAD THE FOLLOWING MODIFIED ENVIRONMENT VARIABLES ON CONNNECTION TO THE CONTAINER:
 #       -  THE 'PATH' ENVIRONMENT VARIABLE, ENABLING ACCESS TO: 
 #         - THE EMBEDDED PERL EXECUTABLE
-#         - THE bin/biorepo EXECUTABLE
+#         - THE bin/repo EXECUTABLE
 #       -  THE 'PERL5LIB' ENVIRONMENT VARIABLE, ENABLING ACCESS TO: 
 #         -  THE PERL MODULES IN THE perl DIRECTORY
 #         -  THE PERL MODULES IN THE lib DIRECTORY
@@ -30,7 +30,7 @@
 ##    3. COPY DB TEMPLATE FROM TEMPLATE IF NOT EXISTS
 ##    4. COPY CONFIG FILE FROM TEMPLATE IF NOT EXISTS
 ##    5. RUN envars.sh TO SET ~/.envars FILE
-##    6. INSTALL biorepo
+##    6. INSTALL repo
 
 use FindBin qw($Bin);
 use File::Copy qw(move);
@@ -43,9 +43,7 @@ my $os = $^O;
 chdir( $Bin );
 
 ##    1. INSTALL ALL SUBMODULES
-my $command = "git submodule update --init --recursive --remote";
-print "DOING $command\n";
-system( $command );
+updateSubmodules ();
 
 ##    2. CHECKOUT OS-SPECIFIC BRANCH OF perl SUBMODULE
 checkoutPerlBranch( $os );
@@ -59,22 +57,26 @@ copyConfigFile( $os );
 ##    5. RUN envars.sh TO SET ~/.envars FILE
 system( ". $Bin/envars.sh" );
 
-##    6. INSTALL biorepo
-my $biorepodir = "$Bin/apps/biorepo";
-mkpath( $biorepodir ) if not -d $biorepodir;
-chdir( $biorepodir );
-my $biorepourl = "https://github.com/syoung/biorepo";
-system( "git clone $biorepourl latest" );
-chdir( "$biorepodir/latest" );
-system( "./install.pl dependent" );
+##    6. INSTALL repo
+installRepo();
 
 #### SUBROUTINES
+sub updateSubmodules {
+  print "Updating submodules:\n";
+  my $commands = [
+    "git submodule update --init --recursive --remote",
+  ];
+  foreach my $command ( @$commands ) {
+    print "$command\n";
+    system( $command );
+  }
+}
 
 sub copyDbFile {
   my $dbtemplate = "$Bin/db/db.sqlite.template";
   my $dbfile = "$Bin/db/db.sqlite";
   if ( -f $dbfile ) {
-    print "Skipping copy dbfile as file already exists: $dbfile\n";
+    print "\nSkipping copy dbfile as file already exists: $dbfile\n";
   }
   else {
     print "Copying $dbtemplate to $dbfile\n";
@@ -88,7 +90,7 @@ sub copyConfigFile {
   my $configtemplate = "$Bin/conf/config.yml.template";
   my $configfile = "$Bin/conf/config.yml";
   if ( -f $configfile ) {
-    print "Skipping copy configfile as file already exists: $configfile\n";
+    print "\nSkipping copy configfile as file already exists: $configfile\n";
   }
   else {
     print "Copying $configtemplate to $configfile\n";
@@ -140,19 +142,19 @@ sub replaceFields {
   return $contents;
 }
 
-
 sub checkoutPerlBranch {
   my $os = shift;
   my $branch = undef;
   my $archname = undef;
   
+  print "\n";
   if ( $os eq "darwin" ) {
-    print "Loading embedded perl branch for OSX\n";
+    print "Loading embedded perl branch for OSX:\n";
     $branch = "osx10.14.6";
     $archname = "darwin-2level";
   }
   elsif ( $os eq "linux" ) {
-    print "Loading perl branch for Linux\n";
+    print "Loading embedded perl branch for Linux:\n";
 
     my $osname=`/usr/bin/perl -V  | grep "archname="`;
     # print "osname: $osname\n";
@@ -187,7 +189,7 @@ sub checkoutPerlBranch {
     }
   }
   elsif ( $os eq "MSWin32" ) {
-    print "Loading embedded perl branch for Windows\n";
+    print "Loading embedded perl branch for Windows:\n";
     $branch = "MSWin32";
     $archname = "x64-multi-thread";
   }
@@ -196,13 +198,25 @@ sub checkoutPerlBranch {
     print "perl branch: $branch-$archname\n";
 
     use FindBin qw($Bin);
-    print "Bin: $Bin\n";
     my $command = "cd $Bin/perl; git checkout $branch-$archname";
     print "$command\n";
     `$command`;
   }
 }  
 
-
+sub installRepo {
+  my $repodir = "$Bin/apps/repo";
+  if ( -d $repodir ) {
+    print "Skipping install repo because directory exists: $repodir\n";
+  }
+  else {
+    mkpath( $repodir ) if not -d $repodir;
+    chdir( $repodir );
+    my $repourl = "https://github.com/syoung/repo";
+    system( "git clone $repourl latest" );
+    chdir( "$repodir/latest" );
+    system( "./install.pl dependent" );
+  }
+}
 
 

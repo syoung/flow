@@ -6,7 +6,7 @@ core:
   INSTALLDIR: <INSTALLDIR>
   USERDIR: <USERDIR>
 database:
-  DBFILE: db/flow.sqlite
+  DBFILE: db/db.sqlite
   DBTYPE: SQLite
   TESTDBFILE: db/test.sqlite
   TESTDBTYPE: SQLite
