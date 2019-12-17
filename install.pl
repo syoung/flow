@@ -59,14 +59,14 @@ copyConfigFile( $os );
 ##    5. RUN envars.sh TO SET ~/.envars FILE
 system( ". $Bin/envars.sh" );
 
-##    6. INSTALL biorepo
-my $biorepodir = "$Bin/apps/biorepo";
-mkpath( $biorepodir ) if not -d $biorepodir;
-chdir( $biorepodir );
-my $biorepourl = "https://github.com/syoung/biorepo";
-system( "git clone $biorepourl latest" );
-chdir( "$biorepodir/latest" );
-system( "./install.pl dependent" );
+# ##    6. INSTALL biorepo
+# my $biorepodir = "$Bin/apps/biorepo";
+# mkpath( $biorepodir ) if not -d $biorepodir;
+# chdir( $biorepodir );
+# my $biorepourl = "https://github.com/syoung/biorepo";
+# system( "git clone $biorepourl latest" );
+# chdir( "$biorepodir/latest" );
+# system( "./install.pl dependent" );
 
 #### SUBROUTINES
 

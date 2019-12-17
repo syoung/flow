@@ -2,6 +2,7 @@
 apps/*
 log/*
 *~
+db.sqlite
 config.yml
 .envars
 
