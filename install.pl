@@ -62,16 +62,9 @@ installBiorepo();
 
 #### SUBROUTINES
 sub updateSubmodules {
+  print "Updating submodules:\n";
   my $commands = [
-    "git submodule update lib/Conf",
-    "git submodule update lib/DBase",
-    "git submodule update lib/Engine",
-    "git submodule update lib/Exchange",
-    "git submodule update lib/Ops",
-    "git submodule update lib/Package",
-    "git submodule update lib/Table",
-    "git submodule update lib/Test",
-    "git submodule update lib/Util",
+    "git submodule update --init --recursive --remote",
   ];
   foreach my $command ( @$commands ) {
     print "$command\n";
@@ -157,12 +150,12 @@ sub checkoutPerlBranch {
   
   print "\n";
   if ( $os eq "darwin" ) {
-    print "Loading embedded perl branch for OSX\n";
+    print "Loading embedded perl branch for OSX:\n";
     $branch = "osx10.14.6";
     $archname = "darwin-2level";
   }
   elsif ( $os eq "linux" ) {
-    print "Loading perl branch for Linux\n";
+    print "Loading embedded perl branch for Linux:\n";
 
     my $osname=`/usr/bin/perl -V  | grep "archname="`;
     # print "osname: $osname\n";
@@ -197,7 +190,7 @@ sub checkoutPerlBranch {
     }
   }
   elsif ( $os eq "MSWin32" ) {
-    print "Loading embedded perl branch for Windows\n";
+    print "Loading embedded perl branch for Windows:\n";
     $branch = "MSWin32";
     $archname = "x64-multi-thread";
   }
