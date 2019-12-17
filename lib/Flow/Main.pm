@@ -855,6 +855,8 @@ method addWorkflow ( $projectname, $wkfile ) {
 	my $options = $self->getOptions( \@ARGV, $formats );
 	$self->logDebug("options", $options);
 
+exit;
+
 	#### SET USERNAME AND OWNER
 	my $username    =   $self->setUsername();
 	my $owner       =   $username;
