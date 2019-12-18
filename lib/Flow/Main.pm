@@ -822,19 +822,17 @@ ORDER BY workflownumber};
 #### WORKFLOW
 
 method getOptions ( $argv, $arguments ) {
-	$self->logDebug("argv", $argv);
-	$self->logDebug("arguments", $arguments);
+	# $self->logDebug("argv", $argv);
+	# $self->logDebug("arguments", $arguments);
 
 	my $options = {};
+
   for (my $i = 0; $i < @$argv; $i++) {
     my $arg = $$argv[$i];
-    $self->logDebug("arg", $arg);
 
     for (my $k = 0; $k < @$arguments; $k++) {
       my $argument = $$arguments[$k][0];
       my $regex = $$arguments[$k][1];
-      $self->logDebug("argument", $argument);
-      $self->logDebug("regex", $regex);
     
       if ( $arg eq $argument ) {
         if ( $i == @$argv - 1 ) {
@@ -848,17 +846,49 @@ method getOptions ( $argv, $arguments ) {
         else {
         	$argument =~ s/^\-+//;
           $options->{$argument} = $$argv[$i + 1];
+          $i++;
         }
-      }
-      else {
-      	$arg =~ s/^\-+//;
-        $options->{$arg} = $$argv[$i + 1];
-      }
 
+        last;
+      }
     }
   }
 
   return $options;
+}
+
+method getProfileYaml ( $file, $profilename ) {
+	$self->logDebug( "file", $file );
+	$self->logDebug( "profilename", $profilename );
+
+	my $yaml = YAML::Tiny->read( $file );
+	my $data = $$yaml[0];
+	# $self->logDebug( "data", $data );
+
+	my $profile = $data->{$profilename};
+	# $self->logDebug( "profile", $profile );
+
+	if ( $profile->{inherits} ) {
+		my $inherited = $profile->{inherits};
+		$self->logDebug( "inherited", $inherited );
+		if ( not $data->{$inherited} ) {
+			print "Inherited field '$inherited' not found in file: $file\n";
+			exit;
+		}
+
+		my $addition = $data->{$inherited};
+		foreach my $key ( keys %$addition ) {
+			if ( not $profile->{ $key } ) {
+				$profile->{$key} = $addition->{$key};
+			}
+		}
+	}
+	$self->logDebug( "profile", $profile );
+
+	$$yaml[ 0 ] = $profile;
+	my $profileyaml = $yaml->write_string( $profile );
+
+	return $profileyaml;
 }
 
 method addWorkflow ( $projectname, $wkfile ) {
@@ -866,10 +896,16 @@ method addWorkflow ( $projectname, $wkfile ) {
 	$self->logDebug("wkfile", $wkfile);
 
 	my $formats = [
-		[ "--name", "\\w.*" ]
+		[ "--name", "\\w.*" ],
+		[ "--profiles", ".+" ], 
 	];
 	my $options = $self->getOptions( \@ARGV, $formats );
 	$self->logDebug("options", $options);
+	my $profilefile = $options->{profiles};
+	$self->logDebug( "profilefile", $profilefile );
+
+# $self->logDebug( "DEBUG EXIT" ) and exit;
+
 
 	#### SET USERNAME AND OWNER
 	my $username    =   $self->setUsername();
@@ -903,9 +939,19 @@ method addWorkflow ( $projectname, $wkfile ) {
 		db          =>  $self->table()->db()
 	);
 	# $workflow->_getopts();
+
+
 	$workflow->_loadFile();
 	$workflow->workflownumber($workflownumber);
 	$self->logDebug("workflow->workflownumber()", $workflow->workflownumber());
+
+	my $profilename = $workflow->profile();
+	$self->logDebug( "profilename", $profilename );
+
+	my $profile = $self->getProfileYaml( $profilefile, $profilename ); 
+	$self->logDebug( "profile", $profile );
+
+	$workflow->profile( $profile );
     
 	#### GET WORKFLOW NAME FROM ARGUMENT
 	my $workflowname =  $workflow->workflowname();

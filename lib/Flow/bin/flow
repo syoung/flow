@@ -123,8 +123,11 @@ my $method = $subcommand;
 
 #### SHORTCUTS
 $subcommand = "addproject" if $subcommand eq "addp";
+$subcommand = "runproject" if $subcommand eq "runp";
 $subcommand = "deleteproject" if $subcommand eq "delp";
+
 $subcommand = "addworkflow" if $subcommand eq "addw";
+$subcommand = "runworkflow" if $subcommand eq "runw";
 $subcommand = "deleteworkflow" if $subcommand eq "delw";
 
 if ( $subcommand =~ /^(add|delete|load|edit|insert|run)/ ) {
