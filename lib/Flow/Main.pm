@@ -230,15 +230,26 @@ WHERE username='$username'};
 	my $projects    =   $self->table()->db()->queryhasharray($query) || [];
   $self->logDebug("projects", $projects);
   
-  print "Projects (" . scalar(@$projects) . "):\n";
+  if ( scalar( @$projects ) == 1 ) {
+  	print "One project\n";
+  }
+  else {
+	  print scalar(@$projects) . " projects\n";
+  }
+  
   for my $project ( @$projects ) {
-  	my $output = $project->{projectname};
-  	$output .= "\t$project->{description}" if defined $project->{description};
-  	$output .= "\t$project->{notes}" if defined $project->{notes};
+  	my $output = "Project    : $project->{projectname}\n";
+  	$output   .= "Description: $project->{description}\n" if $project->{description};
+  	$output   .= "Notes      : $project->{notes}\n" if $project->{notes};
+
+  	my $workflows = $self->table()->getWorkflowsByProject( $project );
+  	foreach my $workflow ( @$workflows ) {
+  		$output .= "$workflow->{workflownumber}.  $workflow->{workflowname}\n";
+  	}
   	print "$output\n";
   }
   if ( scalar( @$projects ) == 0 ) {
-  	print "( None )";
+  	print "No projects loaded. Use 'flow addproject myprojectname' to create a project\n";
   }
 }
 
@@ -334,14 +345,14 @@ method desc ( $projectname ) {
 }
 
 method orderOutput ( $output ) {
-	$self->logDebug( "output", $output );
+	# $self->logDebug( "output", $output );
 	# my ( $head, $workflows ) = $output =~ /(^---.+\n)(workflows:.+)/msg;
 	# $self->logDebug( "head", $head );
 	# $self->logDebug( "workflows", $workflows );
 
 	my ( $head, $tail ) = $output =~ /(^---.+\n)(  - apps:.+)/msg;
-	# $self->logDebug( "head", $head );
-	# $self->logDebug( "tail", $tail );
+	$self->logDebug( "head", $head );
+	$self->logDebug( "tail", $tail );
 
 	my @apps = split ( "  - apps:", $tail );
 	my $workflowtag = shift @apps;
@@ -355,7 +366,7 @@ method orderOutput ( $output ) {
 
 		# $self->logDebug( "app", $app );
 	}
-	# $self->logDebug( "FINAL apps", \@apps );
+	$self->logDebug( "FINAL apps", \@apps );
 
 	my $finaloutput = $head . join( "\n", @apps ); 
 	

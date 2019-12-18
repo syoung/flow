@@ -116,10 +116,17 @@ my $username = &getUsername(\@ARGV);
 my $subcommand = shift @ARGV;
 print "No subcommand provided (try --help)\n" and exit if not defined $subcommand;
 usage() if $subcommand =~ /^-h$/ or $subcommand =~ /^--help$/;
-usage() if $subcommand !~ /^(list|add|delete|load|desc|edit|insert|run|show)/;
+usage() if $subcommand !~ /^(list|add|del|delete|load|desc|edit|insert|run|show)/;
 
 #### GET METHOD
 my $method = $subcommand;
+
+#### SHORTCUTS
+$subcommand = "addproject" if $subcommand eq "addp";
+$subcommand = "deleteproject" if $subcommand eq "delp";
+$subcommand = "addworkflow" if $subcommand eq "addw";
+$subcommand = "deleteworkflow" if $subcommand eq "delw";
+
 if ( $subcommand =~ /^(add|delete|load|edit|insert|run)/ ) {
     $subcommand =~ /^(add|delete|load|edit|insert|run)(.+)$/;
     $method = $1 . uc(substr($2, 0, 1)) . substr($2, 1); 
