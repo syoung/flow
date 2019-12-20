@@ -33,8 +33,9 @@ has 'epochqueued'	=> ( isa => 'Maybe', is => 'rw', default => 0 );
 
 #### Str
 has 'profiles'	=> ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
-has 'profile'	=> ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
-has 'logfile'	=> ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
+has 'profile'	  => ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
+has 'prescript'	=> ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
+has 'logfile'	  => ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
 
 #### STORED LOGISTICS VARIABLES
 has 'username'  => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
@@ -80,10 +81,10 @@ has 'password'  => ( isa => 'Str|Undef', is => 'rw', required => 0 );
 
 #### Obj
 has 'apps'	    => ( isa => 'ArrayRef[Flow::App]', is => 'rw', default => sub { [] } );
-has 'fields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { ['profile', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'outputdir', 'field', 'value', 'wkfile', 'outputfile', 'cmdfile', 'start', 'stop', 'appnumber', 'paramname', 'from', 'to', 'status', 'started', 'stopped', 'duration', 'epochqueued', 'epochstarted', 'epochstopped', 'epochduration', 'format', 'log', 'printlog', 'inputfile', 'outputfile', 'appfile'] } );
-has 'savefields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'profile', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'status', 'started', 'stopped', 'duration', 'locked'] } );
+has 'fields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'prescript', 'profile', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'outputdir', 'field', 'value', 'wkfile', 'outputfile', 'cmdfile', 'start', 'stop', 'appnumber', 'paramname', 'from', 'to', 'status', 'started', 'stopped', 'duration', 'epochqueued', 'epochstarted', 'epochstopped', 'epochduration', 'format', 'log', 'printlog', 'inputfile', 'outputfile', 'appfile'] } );
+has 'savefields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'prescript', 'profile', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'status', 'started', 'stopped', 'duration', 'locked'] } );
 has 'exportfields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', 
-	default => sub { [ 'profile', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'status', 'started', 'stopped', 'duration', 'provenance'] } );
+	default => sub { [ 'prescript', 'profile', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'status', 'started', 'stopped', 'duration', 'provenance'] } );
 has 'hash'		=> ( isa => 'HashRef|Undef', is => 'rw', required => 0 );
 has 'args'		=> ( isa => 'HashRef|Undef', is => 'rw', default => sub { return {}; } );
 has 'db'		=> ( isa => 'Any', is => 'rw', required => 0 );
@@ -517,8 +518,19 @@ method saveWorkflowToDatabase ($workflowobject) {
 	$self->logDebug("workflowdata", $workflowdata);
 	my $keys = ['owner', 'username', 'projectname', 'workflowname', 'workflownumber'];
 	
+	my $profileyaml = $workflowobject->profile();
+	$self->logDebug( "profileyaml", $profileyaml );
+	my $profiledata = $self->yamlToData( $profileyaml );
+	$self->logDebug( "profiledata", $profiledata );
+
+
+	if ( $profiledata ) {
+		$workflowdata = $self->insertTags( $workflowdata, $profiledata );
+	}
+
 	#### ADD WORKFLOW
 	$self->workflowToDatabase($workflowdata);
+
 
 	#### STAGES
 	my $stageobjects = $workflowobject->apps();
@@ -532,7 +544,7 @@ method saveWorkflowToDatabase ($workflowobject) {
 		my $installdir		=	$stageobject->{installdir};
 		
 		#### ADD STAGE	
-		$self->stageToDatabase($username, $stageobject, $projectname, $workflowname, $workflownumber, $stagenumber);
+		$self->stageToDatabase( $username, $stageobject, $projectname, $workflowname, $workflownumber, $stagenumber, $profiledata );
 		
 		#### PARAMETERS
 		my $parameterobjects = $stageobject->parameters();
@@ -542,9 +554,10 @@ method saveWorkflowToDatabase ($workflowobject) {
 			$paramnumber++;
 			
 			#### ADD PARAMETER
-			$self->stageParameterToDatabase($username, $package, $installdir, $stageobject, $parameterobject, $projectname, $workflowname, $workflownumber, $stagenumber, $paramnumber);
+			$self->stageParameterToDatabase( $username, $package, $installdir, $stageobject, $parameterobject, $projectname, $workflowname, $workflownumber, $stagenumber, $paramnumber, $profiledata );
 		}
 	}	
+
 }
 
 

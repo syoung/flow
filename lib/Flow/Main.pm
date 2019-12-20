@@ -353,6 +353,7 @@ method orderOutput ( $output ) {
 	my ( $head, $tail ) = $output =~ /(^---.+\n)(  - apps:.+)/msg;
 	$self->logDebug( "head", $head );
 	$self->logDebug( "tail", $tail );
+	return "" if not $head or not $tail;
 
 	my @apps = split ( "  - apps:", $tail );
 	my $workflowtag = shift @apps;
@@ -861,34 +862,97 @@ method getProfileYaml ( $file, $profilename ) {
 	$self->logDebug( "file", $file );
 	$self->logDebug( "profilename", $profilename );
 
+	return "" if not $file or not $profilename;
+
 	my $yaml = YAML::Tiny->read( $file );
 	my $data = $$yaml[0];
 	# $self->logDebug( "data", $data );
 
-	my $profile = $data->{$profilename};
-	# $self->logDebug( "profile", $profile );
+	my $profile = $self->doProfileInheritance( $data, $profilename );
 
-	if ( $profile->{inherits} ) {
-		my $inherited = $profile->{inherits};
-		$self->logDebug( "inherited", $inherited );
-		if ( not $data->{$inherited} ) {
-			print "Inherited field '$inherited' not found in file: $file\n";
-			exit;
-		}
-
-		my $addition = $data->{$inherited};
-		foreach my $key ( keys %$addition ) {
-			if ( not $profile->{ $key } ) {
-				$profile->{$key} = $addition->{$key};
-			}
-		}
-	}
 	$self->logDebug( "profile", $profile );
 
 	$$yaml[ 0 ] = $profile;
 	my $profileyaml = $yaml->write_string( $profile );
 
 	return $profileyaml;
+}
+
+#  METHOD: doProfileInheritance 
+#
+#  PURPOSE: ADD FIELDS FROM ONE OR MORE INHERITED PROFILES.
+#
+#  THE ORDER OF PRIORITY IS "FIRST TO LAST",  I.E., IF THE 
+#
+#  inherits FIELD IS AS FOLLOWS:
+#
+#
+#   testprofile:
+#
+#			inherits : first,second,third
+#
+#
+#  ... THEN:
+#     
+#    1. THE PROFILES first, second AND third MUST ALSO BE PRESENT
+#
+#    IN THE profiles.yml FILE (EXITS IF THIS IS NOT THE CASE)
+#
+#    2. THE FIELDS FROM PROFILE first WILL BE ADDED TO THE FIELDS
+#
+#    IN PROFILE testprofile WITHOUT OVERWRITING EXISTING FIELDS IN
+#
+#    testprofile
+#
+#    3. THE FIELDS IN PROFILE second WILL SIMILARLY BE ADDED TO
+#
+#    PROFILE testprofile WITHOUT OVERWRITING ANY EXISTING FIELDS
+#
+#    4. LASTLY, THE FIELDS IN PROFILE third WOULD BE ADDED WITHOUT
+#
+#    OVERWRITING ANY FIELDS ORIGINALLY IN PROFILE testprofile OR
+#
+#    ADDED TO IT FROM PROFILES first AND second
+#
+method doProfileInheritance ( $profiles, $profilename ) {
+	$self->logDebug( "profiles", $profiles );
+	my $profile = $profiles->{$profilename};
+	my $inherits = $profile->{inherits};
+	$self->logDebug( "inherits", $inherits );
+	if ( not $inherits ) {
+		return $profile;
+	}
+
+	my @inheritedprofiles = split ",", $inherits;
+	foreach my $inheritedprofile ( @inheritedprofiles ) {
+		my $inherited = $profiles->{$inheritedprofile};
+		if ( not $inherited ) {
+			print "Inherited profile '$inheritedprofile' not found in profiles.yml file\n";
+			exit;
+		}
+
+		foreach my $key ( keys %$inherited ) {
+			$profile->{ $key } = $self->recurseInheritance ( $profile->{$key}, $inherited->{$key} ); 
+		}
+	}
+
+	return $profile;
+}
+
+method recurseInheritance ( $profilefield, $inheritedfield ) {
+	#### INHERITED FIELD DOES NOT EXIST IN profile SO ADD IT 
+	if ( not $profilefield ) {
+		return $inheritedfield;
+	}
+	#### OTHERWISE, RECURSE IF THE FIELD IS AN OBJECT
+	elsif ( ref( $profilefield ) ne "" and ref( $inheritedfield ) ne "" ) {
+		foreach my $key ( %$inheritedfield ) {
+			$profilefield->{$key} = $self->recurseInheritance( $profilefield->{$key}, $inheritedfield->{$key} );
+		}
+	}
+
+	#### OTHERWISE, KEEP THE EXISTING VALUE IN profile
+	return $profilefield;
 }
 
 method addWorkflow ( $projectname, $wkfile ) {
@@ -990,14 +1054,14 @@ method addWorkflow ( $projectname, $wkfile ) {
 	
 	$self->logCritical("workflow->workflowname not defined") and exit if not defined $workflow->workflowname();
 
-	#### ADD WORKFLOW OBJECT TO workflow TABLE
+	#### ADD WORKFLOW OBJECT TO project
 	$self->logDebug("SENDING workflow->number()", $workflow->workflownumber());
 	$projectobject->_saveWorkflow($workflow);
 
-	#### LOAD INTO DATABASE
+	#### SAVE project TO DATABASE
 	$self->projectToDatabase($username, $projectobject);
 	
-	#### SAVE TO DATABASE
+	#### SAVE workflow TO DATABASE
 	$workflow->save();
 
 	print "Added workflow '$workflowname' at number $workflownumber in project '$projectname' for user '$username'\n";
@@ -1168,6 +1232,17 @@ method insertWorkflow ( $project, $wkfile, $workflownumber ) {
 	print "Inserted workflow '$workflowname' at number $workflownumber in project '$project' for user '$username'\n";
 }
 
+method getProfileHash ( $profile ) {
+	$self->logDebug( "profile", $profile );
+
+	my $yaml = YAML::Tiny->new();
+	my $yamlobject = $yaml->read_string( $profile );
+	my $data = $$yamlobject[0];
+	# $self->logDebug( "data", $data );
+
+	return $data;
+}
+
 method runWorkflow ( $projectname, $workflowid ) {
 
 	#### SET USERNAME AND OWNER
@@ -1194,8 +1269,17 @@ method runWorkflow ( $projectname, $workflowid ) {
 	$self->logDebug("start", $start);
 	
 	#### GET WORKFLOW
-	my $workflowhash=	$self->getWorkflow($username, $projectname, $workflowname);		
+	my $workflowhash=	$self->getWorkflow($username, $projectname, $workflowname);	
 	print "Information for workflow not found: $workflowname\n" and exit if not defined $workflowhash;
+	my $profile = $workflowhash->{profile};
+	$self->logDebug( "profile", $profile );
+	my $profilehash = $self->getProfileHash( $profile );
+	$self->logDebug( "profilehash", $profilehash );
+	my $runtype = $profilehash->{runtype};
+
+# $self->logDebug( "DEBUG EXIT" ) and exit;
+
+
 
 	#### SET HASH
 	$workflowhash->{dryrun}		=	$dryrun;
@@ -1216,7 +1300,7 @@ method runWorkflow ( $projectname, $workflowid ) {
 	}
 	elsif ( defined $sampledata ) {
 		my $maxjobs  =	5;
-		if ( not defined $maxjobs ) {
+		if ( not defined $maxjobs or $runtype eq "shell" ) {
 		
 			foreach my $samplehash ( @$sampledata ) {
 				$self->logDebug("Running workflow with samplehash", $samplehash);
@@ -1304,6 +1388,8 @@ method getWorkflow ($username, $projectname, $workflowname) {
 WHERE projectname='$projectname' 
 AND workflowname='$workflowname'
 };
+	$self->logDebug( "query", $query );
+
 	return   $self->table()->db()->queryhash( $query );
 }
 

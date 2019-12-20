@@ -1,0 +1,125 @@
+#!/usr/bin/env perl
+
+=head2
+
+    NAME    samples
+    
+    PURPOSE
+  
+      Generate a list of samples from files in a directory, print them to a TSV file and upload the file to a specified database table.
+
+    USAGE
+  
+    sample <project> <table> <sqlfile> <directory> <regex> [-h] 
+
+    project    :   Name of project (e.g., maxquant)
+    table      :   Name of table (e.g., loadsamples)
+    sqlfile    :   Location of SQL file used to create the table
+    directory  :   Location of input files
+    regex      :   Regular expression to match files for inclusion among the samples
+    --help        :   print this help message
+
+  < option > denotes REQUIRED argument
+  [ option ] denotes OPTIONAL argument
+
+    EXAMPLE
+
+sample maxquant copd \
+/Users/kbsf633/localrepos/sdf-px-maxquant/conf/sql/sample.sql \
+/Volumes/PPP_Data/Data/PXD001977.Sputum/raw.selected \
+"\.raw$"
+
+=cut
+
+#### EXTERNAL MODULES
+use Getopt::Long;
+use Conf::Yaml;
+
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
+
+#### INTERNAL MODULES
+use Flow::Samples;
+
+
+if ( $#ARGV < 3 ) {
+  print "\n**** Not enough arguments. Exiting ****\n";
+  usage();
+}
+
+my $project     = shift @ARGV;
+my $table       = shift @ARGV; 
+my $sqlfile     = shift @ARGV;
+my $directory   = shift @ARGV;
+my $regex       = shift @ARGV;
+
+print "project: $project\n";
+
+my $tsvfile     = $sqlfile;
+$tsvfile =~ s/\.sql$/.tsv/;
+
+#### GET log, printlog AND help
+my $log = getArgument( \@ARGV, ["--log", "-l"] ) || 2;
+my $printlog = getArgument( \@ARGV, ["--printlog", "-p"] ) || 5;
+my $help = getArgument( \@ARGV, ["--help", "-h"] );
+usage() if $help;
+
+# if ( defined $help )  {  usage();  }
+
+#### GET CONF
+my $configfile = "$Bin/../../../conf/config.yml";
+my $conf = Conf::Yaml->new({
+  inputfile   => $configfile,
+  logfile    =>  $logfile,
+  log      =>  2,
+  printlog  =>  5
+});
+
+my $object = Flow::Samples->new({
+  conf        =>  $conf,
+  logfile     =>  $logfile,
+  log         =>  $log,
+  printlog    =>  $printlog
+});
+
+$object->loadSamples($project, $table, $sqlfile, $tsvfile, $directory, $regex);
+
+# #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# #                  SUBROUTINES
+# #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+
+sub usage
+{
+    print `perldoc $0`;
+  exit;
+}
+
+sub getArgument {
+  my $args = shift;
+  my $names = shift;
+
+  for (my $i = 0; $i < @$args; $i++) {
+    my $argument = $$args[$i];
+
+    for (my $k = 0; $k < @$names; $k++) {
+      my $name = $$names[$k];
+      $name =~ s/\-/\-/g;
+    
+      if ( $$args[$i] eq  $name ) {
+        if ( $name =~ /^(--help|-h)$/ ) {
+          return 1;
+        }
+        elsif ( $i == @$args - 1 or $$args[$i + 1] !~ /^\d+$/ ) { 
+          print "Argument '$name' requires an integer value\n";
+          exit;
+        }
+        else {
+          my $value = $$args[$i + 1];   
+          splice( @$args, $i, 2);
+          return $value;
+        }
+      } 
+    }
+  }
+}

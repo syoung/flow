@@ -11,12 +11,48 @@ ROLE        Flow::Common
 
 PURPOSE
 
-	1. PROVIDE COMMON UTILITY METHODS FOR Flow CLASSES
+  1. PROVIDE COMMON UTILITY METHODS FOR Flow CLASSES
 
 =cut
 
 
-method stageToDatabase ($username, $stageobject, $projectname, $workflowname, $workflownumber, $appnumber) {
+method yamlToData ( $text ) {
+  $self->logDebug( "text", $text );
+  return {} if not $text;
+
+  my $yaml = YAML::Tiny->new();
+  my $yamlinstance = $yaml->read_string( $text );
+  my $data = $yamlinstance->[0];
+  $self->logDebug( "data", $data );
+
+  return $data;
+}
+
+method insertTags ( $data, $profiledata ) {
+  $self->logDebug( "data", $data );
+  $self->logDebug( "profiledata", $profiledata );
+
+  for my $key ( keys %$profiledata ) {
+    # $self->logDebug( "DOING key $key" );
+
+    #### ONLY INSERT SCALAR VALUES
+    if ( ref( $profiledata->{ $key } ) eq "" ) {
+      for my $datakey ( keys %$data ) {
+        my $upperkey = "<" . uc( $key ) . ">";
+        # $self->logDebug( "upperkey", $upperkey );
+        # $self->logDebug( "profiledata->{$key}", $profiledata->{$key} );
+
+        next if not $data->{$datakey};
+        $data->{$datakey} =~ s/$upperkey/$profiledata->{$key}/g;
+      }
+    }
+  }
+  $self->logDebug( "data", $data );
+
+  return $data;
+}
+
+method stageToDatabase ( $username, $stageobject, $projectname, $workflowname, $workflownumber, $appnumber, $profiledata ) {
   $self->logDebug("appnumber", $appnumber);
   
   $self->logCritical("username not defined") and exit if not defined $username;
@@ -37,6 +73,10 @@ method stageToDatabase ($username, $stageobject, $projectname, $workflowname, $w
   delete $stagedata->{parameters};
   #$self->logDebug("AFTER delete, stagedata", $stagedata);
 
+  $self->logDebug( "BEFORE insertTags    stagedata", $stagedata );
+  $stagedata = $self->insertTags( $stagedata, $profiledata );
+  $self->logDebug( "AFTER insertTags    stagedata", $stagedata );
+
   #### REMOVE STAGE
   $self->table()->_deleteStage($stagedata);
   
@@ -44,7 +84,7 @@ method stageToDatabase ($username, $stageobject, $projectname, $workflowname, $w
   $self->table()->_addStage($stagedata);
 }
 
-method stageParameterToDatabase ($username, $package, $installdir, $stage, $parameterobject, $projectname, $workflowname, $workflownumber, $stagenumber, $paramnumber) {
+method stageParameterToDatabase ( $username, $package, $installdir, $stage, $parameterobject, $projectname, $workflowname, $workflownumber, $stagenumber, $paramnumber, $profiledata ) {
   $self->logNote("parameterobject", $parameterobject);
   $self->logDebug("stagenumber", $stagenumber);
   
@@ -65,6 +105,16 @@ method stageParameterToDatabase ($username, $package, $installdir, $stage, $para
   $paramdata->{version}   = $stage->version();
   $paramdata->{ordinal}   = $paramnumber if not defined $paramdata->{ordinal};
   $self->logDebug("AFTER paramdata", $paramdata); 
+
+  if ( not $paramdata->{paramname} and $paramdata->{argument} ) {
+    $paramdata->{paramname} = $paramdata->{argument};
+    $paramdata->{paramname} =~ s/^\-+//g;
+  }
+
+  $self->logDebug( "BEFORE insertTags    paramdata", $paramdata );
+  $paramdata = $self->insertTags( $paramdata, $profiledata );
+  $self->logDebug( "AFTER insertTags    paramdata", $paramdata );
+
 
   #### REMOVE STAGE PARAMETER
   $self->table()->_deleteStageParameter($paramdata);
@@ -180,27 +230,27 @@ method _indentSecond ($first, $second, $indent) {
 }
 
 method setUsername {
-	my $whoami    =   `whoami`;
-	$whoami       =~  s/\s+$//;
-	$self->logDebug("whoami", $whoami);
+  my $whoami    =   `whoami`;
+  $whoami       =~  s/\s+$//;
+  $self->logDebug("whoami", $whoami);
 
-	#### RETURN ACCOUNT NAME IF NOT ROOT
-	if ( $whoami ne "root" ) {
-		$self->username($whoami);
-		return $whoami;
-	}
-	
-	#### OTHERWISE, SET USERNAME IF PROVIDED
-	my $username    =   $self->username();
-	$self->logDebug("username", $username);
-	if ( defined $username and $username ne "" ) {
-		$self->username($username);
-		return $username;
-	}
-	else {
-		$self->username($whoami);
-		return $whoami;
-	}
+  #### RETURN ACCOUNT NAME IF NOT ROOT
+  if ( $whoami ne "root" ) {
+    $self->username($whoami);
+    return $whoami;
+  }
+  
+  #### OTHERWISE, SET USERNAME IF PROVIDED
+  my $username    =   $self->username();
+  $self->logDebug("username", $username);
+  if ( defined $username and $username ne "" ) {
+    $self->username($username);
+    return $username;
+  }
+  else {
+    $self->username($whoami);
+    return $whoami;
+  }
 }
 
 method setConf {

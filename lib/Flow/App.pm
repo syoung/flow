@@ -33,10 +33,12 @@ class Flow::App with (Util::Logger,
     has 'epochqueued'   => ( isa => 'Maybe',     is => 'rw', default => undef );
 
     #### Str
+    has 'prescript'     => ( isa => 'Str|Undef', is => 'rw', default => undef );
     has 'stagepid'      => ( isa => 'Str|Undef', is => 'rw', default => undef );
     has 'stagejobid'    => ( isa => 'Str|Undef', is => 'rw', default => undef );
     has 'workflowpid'   => ( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'profile'   => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
+    has 'profile'       => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
+    has 'prescript'     => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
     has 'envfile'   => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
     has 'logfile'   => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
     has 'owner'	    => ( isa => 'Str|Undef', is => 'rw', required => 0, default =>  undef );
@@ -86,10 +88,10 @@ class Flow::App with (Util::Logger,
 
     #### Obj
     has 'parameters'=> ( isa => 'ArrayRef[Flow::Parameter]', is => 'rw', default => sub { [] } );
-    has 'fields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { ['appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'url', 'linkurl', 'status', 'submit', 'appfile', 'field', 'value', 'cmdfile', 'inputfile', 'outputfile', 'paramname', 'scrapefile', 'stdoutfile', 'stderrfile', 'queued', 'started', 'completed', 'duration', 'stagepid', 'stagejobid', 'workflowpid', 'log', 'printlog', 'app', 'argument', 'format'] } );
-    has 'savefields' => ( isa => 'ArrayRef[Str]', is => 'rw', default => sub { ['appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'status', 'queued', 'started', 'completed', 'duration', 'locked', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'submit', 'url', 'linkurl', 'localonly', 'stdoutfile', 'stderrfile', 'stagepid', 'stagejobid', 'workflowpid'] } );
-    has 'exportfields' => ( isa => 'ArrayRef[Str]', is => 'rw', default => sub { ['appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'status', 'submit', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'url', 'linkurl', 'localonly', 'stdoutfile', 'stderrfile', 'queued', 'started', 'completed', 'duration', 'stagepid', 'stagejobid', 'workflowpid'] } );
-    has 'appfields' => ( isa => 'ArrayRef[Str]', is => 'rw', default => sub { ['appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'url', 'linkurl', 'localonly'] } );
+    has 'fields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'prescript', 'appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'url', 'linkurl', 'status', 'submit', 'appfile', 'field', 'value', 'cmdfile', 'inputfile', 'outputfile', 'paramname', 'scrapefile', 'stdoutfile', 'stderrfile', 'queued', 'started', 'completed', 'duration', 'stagepid', 'stagejobid', 'workflowpid', 'log', 'printlog', 'app', 'argument', 'format'] } );
+    has 'savefields' => ( isa => 'ArrayRef[Str]', is => 'rw', default => sub { ['prescript', 'appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'status', 'queued', 'started', 'completed', 'duration', 'locked', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'submit', 'url', 'linkurl', 'localonly', 'stdoutfile', 'stderrfile', 'stagepid', 'stagejobid', 'workflowpid'] } );
+    has 'exportfields' => ( isa => 'ArrayRef[Str]', is => 'rw', default => sub { [ 'prescript', 'appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'status', 'submit', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'url', 'linkurl', 'localonly', 'stdoutfile', 'stderrfile', 'queued', 'started', 'completed', 'duration', 'stagepid', 'stagejobid', 'workflowpid'] } );
+    has 'appfields' => ( isa => 'ArrayRef[Str]', is => 'rw', default => sub { [ 'prescript', 'appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'url', 'linkurl', 'localonly'] } );
     has 'force'     => ( isa => 'Maybe', 	 is => 'rw', required => 0 );
     has 'logfh'     => ( isa => 'FileHandle',is => 'rw', required => 0 );
 
