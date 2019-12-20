@@ -1275,10 +1275,21 @@ method runWorkflow ( $projectname, $workflowid ) {
 	$self->logDebug( "profile", $profile );
 	my $profilehash = $self->getProfileHash( $profile );
 	$self->logDebug( "profilehash", $profilehash );
-	my $runtype = $profilehash->{runtype};
+	my $runtype = $profilehash->{run}->{type};
+	my $hostname    = $profilehash->{host}->{name};
+	$self->logDebug( "runtype", $runtype );
+	$self->logDebug( "hostname", $hostname );
+
+ 	use Sys::Hostname;
+  my $thishost = hostname;
+	$self->logDebug( "thishost", $thishost );
+	my $isremote = $hostname ne "localhost" and $hostname ne $thishost;
+	$self->logDebug( "isremote", $isremote );
+  my $hosttype = "Local";
+  $hosttype = "Remote" if $isremote;
+
 
 # $self->logDebug( "DEBUG EXIT" ) and exit;
-
 
 
 	#### SET HASH
@@ -1295,7 +1306,7 @@ method runWorkflow ( $projectname, $workflowid ) {
 	$self->logDebug("samplestring", $samplestring);
 	if ( defined $samplestring ) {
 		my $samplehash		=	$self->sampleStringToHash($samplestring);
-		my $success	=	$self->_runWorkflow($workflowhash, $samplehash);
+		my $success	=	$self->_runWorkflow( $hosttype, $runtype, $workflowhash, $samplehash );
 		$self->logDebug("success", $success);
 	}
 	elsif ( defined $sampledata ) {
@@ -1305,25 +1316,28 @@ method runWorkflow ( $projectname, $workflowid ) {
 			foreach my $samplehash ( @$sampledata ) {
 				$self->logDebug("Running workflow with samplehash", $samplehash);
 				#print "Running workflow $workflowname using sample: ", $samplehash->{sample}, "\n";
-				$self->_runWorkflow($workflowhash, $samplehash);
-				my $success	=	$self->_runWorkflow($workflowhash, $samplehash);
+
+				#### ????
+				# $self->_runWorkflow($hosttype, $runtype, $workflowhash, $samplehash);
+
+				my $success	=	$self->_runWorkflow( $hosttype, $runtype, $workflowhash, $samplehash );
 				$self->logDebug("success", $success);
 			}
 		}
 		else {
 			$self->logDebug("DOING _runSampleWorkflow");
-			my $success	=	$self->_runSampleWorkflow($workflowhash, $sampledata);
+			my $success	=	$self->_runSampleWorkflow( $hosttype, $runtype, $workflowhash, $sampledata );
 			$self->logDebug("success", $success);
 		}
 	}
 	else {
 		#print "Running workflow $workflowname\n";
-		$self->_runWorkflow($workflowhash, undef);
+		$self->_runWorkflow( $hosttype, $runtype, $workflowhash, undef );
 		#print "Completed workflow $workflowname\n";
 	}
 }
 
-method _runWorkflow ($workflowhash, $samplehash) {
+method _runWorkflow ( $hosttype, $runtype, $workflowhash, $samplehash ) {
 	$self->logDebug("workflowhash", $workflowhash);
 	$self->logDebug("samplehash", $samplehash);
 	
@@ -1341,12 +1355,12 @@ method _runWorkflow ($workflowhash, $samplehash) {
 	$workflowhash->{scheduler}=	$self->scheduler();
 	
 	require Engine::Workflow;
-	my $object	= Engine::Workflow->new($workflowhash);
+	my $object	= Engine::Workflow->new( $hosttype, $runtype, $workflowhash );
 	#$self->logDebug("object", $object);
 	return $object->executeWorkflow($workflowhash);
 }
 
-method _runSampleWorkflow ($workflowhash, $sampledata) {
+method _runSampleWorkflow ( $hosttype, $runtype, $workflowhash, $sampledata ) {
 	$self->logDebug("workflowhash", $workflowhash);
 	$workflowhash->{start}		=	1;
 	$workflowhash->{workflow}	=	$workflowhash->{name};
