@@ -16,6 +16,7 @@ use Getopt::Simple;
 # use TryCatch;
 use Data::Dumper;
 use YAML;
+use Sys::Hostname;
 
 #### INTERNAL
 use Flow::Project;
@@ -1276,25 +1277,31 @@ method runWorkflow ( $projectname, $workflowid ) {
 	my $profilehash = $self->getProfileHash( $profile );
 	$self->logDebug( "profilehash", $profilehash );
 	my $runtype = $profilehash->{run}->{type};
-	my $hostname    = $profilehash->{host}->{name};
+	my $hostname    = $profilehash->{host}->{name} || "";
 	$self->logDebug( "runtype", $runtype );
 	$self->logDebug( "hostname", $hostname );
 
- 	use Sys::Hostname;
-  my $thishost = hostname;
+        my $thishost = hostname || "";
 	$self->logDebug( "thishost", $thishost );
-	my $isremote = $hostname ne "localhost" and $hostname ne $thishost;
+	my $isremote = 0;
+	if ( $hostname ne "localhost" ) {
+	    if ( $thishost and $hostname ) {
+		if ( $hostname ne $thishost ) {
+		    $isremote = 1;
+		}
+	    }
+	    else {
+		$isremote = 1;
+	    }
+	}
 	$self->logDebug( "isremote", $isremote );
-  my $hosttype = "Local";
-  $hosttype = "Remote" if $isremote;
-
-
-# $self->logDebug( "DEBUG EXIT" ) and exit;
-
+        my $hosttype = "Local";
+        $hosttype = "Remote" if $isremote;
 
 	#### SET HASH
 	$workflowhash->{dryrun}		=	$dryrun;
 	$workflowhash->{start}		=	$start;
+	$workflowhash->{profile}	=	$profilehash;
 	$self->logDebug("workflowhash", $workflowhash);
 	
 	#### GET SAMPLES
