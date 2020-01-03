@@ -1025,7 +1025,7 @@ method _addWorkflow ($workflowobject) {
 
   my $workflowfile = "$projectdir/$workflownumber-$workflowname.work";
   $self->logDebug("workflowfile", $workflowfile);
-  `rm -fr $workflowfile`;
+  File::Path::rmtree( $workflowfile ) if -f $workflowfile;
   $workflowobject->export($workflowfile);
 
   return scalar(@{$self->workflows()});

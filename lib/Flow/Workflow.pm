@@ -9,94 +9,96 @@ class Flow::Workflow with (Util::Logger,
 	Flow::Timer, 
 	Flow::Common) {
 
+#### EXTERNAL
 use File::Path;
 use JSON;
-use Data::Dumper;
+use YAML::Tiny;
+
+#### INTERNAL
 use Flow::App;
 use Conf::Yaml;
 use Table::Main;
 
 #### Int
 has 'workflownumber'	=> ( isa => 'Int|Undef', is => 'rw', default	=>	1	);
-has 'log'		=> ( isa => 'Int', is => 'rw', default 	=> 	0 	);  
-has 'printlog'	=> ( isa => 'Int', is => 'rw', default 	=> 	0 	);
-has 'epochstarted'	=> ( isa => 'Int|Undef', is => 'rw', default => 0 );
-has 'epochstopped'  => ( isa => 'Int|Undef', is => 'rw', default => 0 );
-has 'epochduration'	=> ( isa => 'Int|Undef', is => 'rw', default => 0 );
-has 'indent'    => ( isa => 'Int', is => 'ro', default => 15);
-has 'start'	=> ( isa => 'Int', is => 'rw', required => 0 );
-has 'stop'	=> ( isa => 'Int', is => 'rw', required => 0 );
+has 'log'		          => ( isa => 'Int', is => 'rw', default 	=> 	0 	);  
+has 'printlog'	      => ( isa => 'Int', is => 'rw', default 	=> 	0 	);
+has 'epochstarted'	  => ( isa => 'Int|Undef', is => 'rw', default => 0 );
+has 'epochstopped'    => ( isa => 'Int|Undef', is => 'rw', default => 0 );
+has 'epochduration'	  => ( isa => 'Int|Undef', is => 'rw', default => 0 );
+has 'indent'          => ( isa => 'Int', is => 'ro', default => 15);
+has 'start'	          => ( isa => 'Int', is => 'rw', required => 0 );
+has 'stop'	          => ( isa => 'Int', is => 'rw', required => 0 );
 
 #### Maybe
-has 'force'     => ( isa => 'Maybe', is => 'rw', required => 0 );
-has 'epochqueued'	=> ( isa => 'Maybe', is => 'rw', default => 0 );
+has 'force'           => ( isa => 'Maybe', is => 'rw', required => 0 );
+has 'epochqueued'	    => ( isa => 'Maybe', is => 'rw', default => 0 );
 
 #### Str
-has 'profiles'	=> ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
-has 'profile'	  => ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
-has 'prescript'	=> ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
-has 'logfile'	  => ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
+has 'profiles'	      => ( isa => 'Str|Undef', is => 'rw', default  	=> "" );
+has 'prescript'	      => ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
+has 'logfile'	        => ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
 
 #### STORED LOGISTICS VARIABLES
-has 'username'  => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
-has 'owner'	    => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
-has 'package'	=> ( isa => 'Str|Undef', is => 'rw', required => 0 );
-has 'projectname'	=> ( isa => 'Str|Undef', is => 'rw', required => 0 );
-has 'workflowname'	=> ( isa => 'Str|Undef', is => 'rw', required => 0 );
-has 'workflowtype'	=> ( isa => 'Str|Undef', is => 'rw', required => 0, documentation => q{User-defined application type} );
-has 'description'	=> ( isa => 'Str|Undef', is => 'rw', default => undef );
-has 'notes'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
-has 'appnumber'	=> ( isa => 'Str|Undef', is => 'rw', default => undef, required => 0, documentation => q{Set order of appearance: 1, 2, ..., N} );
-has 'paramname'	=> ( isa => 'Str|Undef', is => 'rw', default => undef, required => 0, documentation => q{Unique parameter name (used by editParameter subcommand)} );
-has 'provenance'=> ( isa => 'Str|Undef', is => 'rw', required	=>	0, default => '');
+has 'username'        => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
+has 'owner'	          => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
+has 'package'	        => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+has 'projectname'	    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+has 'workflowname'	  => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+has 'workflowtype'	  => ( isa => 'Str|Undef', is => 'rw', required => 0, documentation => q{User-defined application type} );
+has 'description'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
+has 'notes'	          => ( isa => 'Str|Undef', is => 'rw', default => undef );
+has 'appnumber'	      => ( isa => 'Str|Undef', is => 'rw', default => undef, required => 0, documentation       => q{Set order of appearance: 1, 2, ..., N} );
+has 'paramname'	      => ( isa => 'Str|Undef', is => 'rw', default => undef, required => 0, documentation       => q{Unique parameter name (used by editParameter subcommand)} );
+has 'provenance'      => ( isa => 'Str|Undef', is => 'rw', required	=>	0, default => '');
 
 #### STORED STATUS VARIABLES
-has 'status'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
-has 'locked'	    => ( isa => 'Int|Undef', is => 'rw', default => undef );
-has 'queued'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
-has 'started'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
-has 'stopped'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
-has 'duration'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
+has 'status'	    		=> ( isa => 'Str|Undef', is => 'rw', default => undef );
+has 'locked'	    		=> ( isa => 'Int|Undef', is => 'rw', default => undef );
+has 'queued'	    		=> ( isa => 'Str|Undef', is => 'rw', default => undef );
+has 'started'	    		=> ( isa => 'Str|Undef', is => 'rw', default => undef );
+has 'stopped'	    		=> ( isa => 'Str|Undef', is => 'rw', default => undef );
+has 'duration'	      => ( isa => 'Str|Undef', is => 'rw', default => undef );
 
 #### TRANSIENT VARIABLES
-has 'format'    => ( isa => 'Str', is => 'rw', default => "yaml");
-has 'from'	=> ( isa => 'Str', is => 'rw', required => 0 );
-has 'to'	=> ( isa => 'Str', is => 'rw', required => 0 );
-has 'newname'	=> ( isa => 'Str', is => 'rw', required => 0 );
-has 'appFile'	=> ( isa => 'Str', is => 'rw', required => 0 );
-has 'field'	    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
-has 'value'	    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
-has 'inputfile' => ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
-has 'wkfile'    => ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
-has 'cmdfile'=> ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
-has 'appfile'   => ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
-has 'logfile'   => ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
-has 'outputfile'=> ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
-has 'outputdir'=> ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
-has 'dbfile'    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
-has 'dbtype'    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
-has 'database'  => ( isa => 'Str|Undef', is => 'rw', required => 0 );
-has 'user'      => ( isa => 'Str|Undef', is => 'rw', required => 0 );
-has 'password'  => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+has 'format'          => ( isa => 'Str', is => 'rw', default => "yaml");
+has 'from'	          => ( isa => 'Str', is => 'rw', required => 0 );
+has 'to'	            => ( isa => 'Str', is => 'rw', required => 0 );
+has 'newname'	        => ( isa => 'Str', is => 'rw', required => 0 );
+has 'appFile'	        => ( isa => 'Str', is => 'rw', required => 0 );
+has 'field'	          => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+has 'value'	          => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+has 'inputfile'       => ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
+has 'wkfile'          => ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
+has 'cmdfile'         => ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
+has 'appfile'         => ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
+has 'logfile'         => ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
+has 'outputfile'      => ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
+has 'outputdir'       => ( isa => 'Str|Undef', is => 'rw', required => 0, default => '' );
+has 'dbfile'          => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+has 'dbtype'          => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+has 'database'        => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+has 'user'            => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+has 'password'        => ( isa => 'Str|Undef', is => 'rw', required => 0 );
 
 #### Obj
-has 'apps'	    => ( isa => 'ArrayRef[Flow::App]', is => 'rw', default => sub { [] } );
-has 'fields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'prescript', 'profile', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'outputdir', 'field', 'value', 'wkfile', 'outputfile', 'cmdfile', 'start', 'stop', 'appnumber', 'paramname', 'from', 'to', 'status', 'started', 'stopped', 'duration', 'epochqueued', 'epochstarted', 'epochstopped', 'epochduration', 'format', 'log', 'printlog', 'inputfile', 'outputfile', 'appfile'] } );
-has 'savefields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'prescript', 'profile', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'status', 'started', 'stopped', 'duration', 'locked'] } );
+has 'apps'	          => ( isa => 'ArrayRef[Flow::App]', is => 'rw', default => sub { [] } );
+has 'fields'          => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'prescript', 'profiles', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'outputdir', 'field', 'value', 'wkfile', 'outputfile', 'cmdfile', 'start', 'stop', 'appnumber', 'paramname', 'from', 'to', 'status', 'started', 'stopped', 'duration', 'epochqueued', 'epochstarted', 'epochstopped', 'epochduration', 'format', 'log', 'printlog', 'inputfile', 'outputfile', 'appfile'] } );
+has 'savefields'      => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'prescript', 'profiles', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'status', 'started', 'stopped', 'duration', 'locked'] } );
 has 'exportfields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', 
-	default => sub { [ 'prescript', 'profile', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'status', 'started', 'stopped', 'duration', 'provenance'] } );
-has 'hash'		=> ( isa => 'HashRef|Undef', is => 'rw', required => 0 );
-has 'args'		=> ( isa => 'HashRef|Undef', is => 'rw', default => sub { return {}; } );
-has 'db'		=> ( isa => 'Any', is => 'rw', required => 0 );
-has 'logfh'     => ( isa => 'FileHandle', is => 'rw', required => 0 );
-has 'conf' 	=> (
+	default => sub { [ 'prescript', 'profiles', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'status', 'started', 'stopped', 'duration', 'provenance'] } );
+has 'hash'		        => ( isa => 'HashRef|Undef', is => 'rw', required => 0 );
+has 'args'		        => ( isa => 'HashRef|Undef', is => 'rw', default => sub { return {}; } );
+has 'db'		          => ( isa => 'Any', is => 'rw', required => 0 );
+has 'logfh'           => ( isa => 'FileHandle', is => 'rw', required => 0 );
+has 'conf' 	          => (
     is 		=>	'rw',
     isa 	=> 	'Conf::Yaml',
     lazy	=>	1,
     builder	=>	"setConf"
 );
     
-has 'table'		=>	(
+has 'table'		        =>	(
 	is 			=>	'rw',
 	isa 		=>	'Table::Main',
 	lazy		=>	1,
@@ -498,7 +500,7 @@ method save {
 	$self->setUsername() if not $self->username();
 	
 	#### LOAD INTO DATABASE
-	$self->saveWorkflowToDatabase($self);
+	return $self->saveWorkflowToDatabase($self);
 }
 
 method saveWorkflowToDatabase ($workflowobject) {
@@ -518,34 +520,47 @@ method saveWorkflowToDatabase ($workflowobject) {
 	$self->logDebug("workflowdata", $workflowdata);
 	my $keys = ['owner', 'username', 'projectname', 'workflowname', 'workflownumber'];
 	
-	my $profileyaml = $workflowobject->profile();
-	$self->logDebug( "profileyaml", $profileyaml );
+	my $profileyaml = $workflowdata->{profiles};
 	my $profiledata = $self->yamlToData( $profileyaml );
 	$self->logDebug( "profiledata", $profiledata );
 
-
 	if ( $profiledata ) {
-		$workflowdata = $self->insertTags( $workflowdata, $profiledata );
+		$workflowdata = $self->replaceTags( $workflowdata, $profiledata );
 	}
 
 	#### ADD WORKFLOW
-	$self->workflowToDatabase($workflowdata);
-
+	my $success = $self->workflowToDatabase($workflowdata);
+	$self->logDebug( "success", $success );
+	if ( not $success ) {
+		print "Can't add workflow to database: " . YAML::Tiny::Dump( $workflowdata ) . "\n";
+		exit;
+	}
 
 	#### STAGES
 	my $stageobjects = $workflowobject->apps();
 	$self->logDebug("No. stageobjects", scalar(@$stageobjects));
 	foreach my $stageobject ( @$stageobjects ) {
 		#$self->logDebug("stageobject", $stageobject);
-		#$self->logDebug("stageobject->submit()", $stageobject->submit());
+		last if not $success;
 
 		my $stagenumber 	= $stageobject->{appnumber};
-		my $package			=	$stageobject->{package};
+		my $package			  =	$stageobject->{package};
 		my $installdir		=	$stageobject->{installdir};
-		
+		my $profilename   = $stageobject->{profilename};
+		my $stageprofile  = $self->doProfileInheritance( $profiledata, $profilename );
+
 		#### ADD STAGE	
-		$self->stageToDatabase( $username, $stageobject, $projectname, $workflowname, $workflownumber, $stagenumber, $profiledata );
+		my $stagecompleted = $self->stageToDatabase( $username, $stageobject, $projectname, $workflowname, $workflownumber, $stagenumber, $profiledata );
+		$self->logDebug( "stagecompleted", $stagecompleted );
 		
+		if ( not $stagecompleted ) {
+			my $stagedata = $stageobject->exportData();
+			$stagedata->{profile} = $profiledata->{ $profilename };
+			print "Failed to load stage: " . YAML::Tiny::Dump( $stagedata ) . "\n";
+			$success = 0;
+			last;
+		}
+
 		#### PARAMETERS
 		my $parameterobjects = $stageobject->parameters();
 		$self->logDebug("no. parameterobjects", scalar(@$parameterobjects));
@@ -554,10 +569,22 @@ method saveWorkflowToDatabase ($workflowobject) {
 			$paramnumber++;
 			
 			#### ADD PARAMETER
-			$self->stageParameterToDatabase( $username, $package, $installdir, $stageobject, $parameterobject, $projectname, $workflowname, $workflownumber, $stagenumber, $paramnumber, $profiledata );
+			my $paramcompleted = $self->stageParameterToDatabase( $username, $package, $installdir, $stageobject, $parameterobject, $projectname, $workflowname, $workflownumber, $stagenumber, $paramnumber, $stageprofile );
+			$self->logDebug( "paramcompleted", $paramcompleted );
+
+			if ( not $paramcompleted ) {
+				$success = 0;
+				last;
+			}
 		}
 	}	
 
+	#### ROLLBACK IF DB INSERT FAILED
+	if ( not $success ) {
+		$self->table()->_removeWorkflow( $workflowdata );
+	}
+
+	return $success;
 }
 
 
@@ -566,9 +593,9 @@ method workflowToDatabase ($workflowdata) {
 	$self->logCritical("username not defined") and exit if not defined $workflowdata->{username};
 	delete $workflowdata->{apps};
 
-	#### REMOVE WORKFLOW
-	my $success = $self->table()->_removeWorkflow($workflowdata);
-	$self->logDebug("success", $success);
+	# #### REMOVE WORKFLOW
+	# my $success = $self->table()->_removeWorkflow($workflowdata);
+	# $self->logDebug("success", $success);
 
 	#### ADD WORKFLOW
 	return $self->table()->_addWorkflow($workflowdata);
@@ -1245,6 +1272,10 @@ method _orderApps {
 	@$apps = sort appnumberOrAbc @$apps;
 	$self->apps($apps);
 }
+
+
+
+
 }
 
 

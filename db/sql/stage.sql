@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS stage (
   appnumber           INT(12),
   apptype             VARCHAR(40),
 
+  profilename         VARCHAR(40),
   profile             TEXT DEFAULT '',
 
   status              VARCHAR(20),

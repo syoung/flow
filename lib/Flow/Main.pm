@@ -100,7 +100,6 @@ has 'value'	    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
 
 #### Obj
 has 'workflows'	 => ( isa => 'ArrayRef[Flow::Workflow]', is => 'rw', default => sub { [] } );
-has 'profiles'	 => ( isa => 'HashRef', is => 'rw', default => sub { {} } );
 has 'fields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { 
 	[ 'profiles', 'username', 'database', 'project', 'number', 'workflow', 'owner', 'description', 'notes', 'outputdir', 'field', 'value', 'projfile', 'wkfile', 'outputfile', 'cmdfile', 'start', 'stop', 'ordinal', 'from', 'to', 'status', 'started', 'stopped', 'duration', 'epochqueued', 'epochstarted', 'epochstopped', 'epochduration', 'log', 'printlog', 'scheduler', 'samplestring', 'maxjobs', 'stagenumber', 'format', 'dryrun', 'override', 'force' ] } );
 has 'logfh'     => ( isa => 'FileHandle', is => 'rw', required => 0 );
@@ -337,42 +336,99 @@ method desc ( $projectname ) {
 	$project = $$projects[ 0 ];
 		
 	$project->{workflows} = $workflows;
-	my $output = Dump ( $project );
+	# $self->logDebug( "project", $project );
+	# my $output = Dump ( $project );
 	# $self->logDebug("output", $output);
 
-	$output = $self->orderOutput( $output );
+	my $output = $self->orderedOutput( $project );
 
 	print $output;
 }
 
-method orderOutput ( $output ) {
-	# $self->logDebug( "output", $output );
-	# my ( $head, $workflows ) = $output =~ /(^---.+\n)(workflows:.+)/msg;
-	# $self->logDebug( "head", $head );
-	# $self->logDebug( "workflows", $workflows );
+method orderedOutput ( $project ) {
+	$self->logDebug( "project", $project );
+	my $output = "";
 
-	my ( $head, $tail ) = $output =~ /(^---.+\n)(  - apps:.+)/msg;
-	$self->logDebug( "head", $head );
-	$self->logDebug( "tail", $tail );
-	return "" if not $head or not $tail;
+	my $workflows = $project->{workflows};
+	delete $project->{workflows};
+	$self->logDebug( "workflows", $workflows );
+	$output .= YAML::Tiny::Dump $project;
+	$output =~ s/^\-+\n//;
 
-	my @apps = split ( "  - apps:", $tail );
-	my $workflowtag = shift @apps;
-	for my $app ( @apps ) {
-		# $self->logDebug( "app", $app );
-		my ( $start, $end ) = $app =~ /^(\s+.+\n)(\s+workflowname.+)\a*$/msg;
-		$end =~ s/\s+$//;
-		# $self->logDebug( "start", $start );
-		# $self->logDebug( "end", $end );
-		$app = $end . "\n    - apps:" . $start;
+	foreach my $workflow ( @$workflows ) {
+		my $apps = $workflow->{ apps };
+		$self->logDebug( "apps", $apps );
+		delete $workflow->{ apps };
+		my $profiles = $workflow->{ profiles };
+		$self->logDebug( "profiles", $profiles );
+		delete $workflow->{ profiles };
+		$self->logDebug( "workflow", $workflow );
 
-		# $self->logDebug( "app", $app );
+		#### WORKFLOW
+		my $padding = 2;
+		my $workflowtext = YAML::Tiny::Dump $workflow;
+		$workflowtext =~ s/^\-+\n//;
+		$self->logDebug( "BEFORE padRows    workflowtext", $workflowtext );
+		$workflowtext = $self->padRows( $workflowtext, $padding );
+		$self->logDebug( "AFTER padRows    workflowtext", $workflowtext );
+
+		$output .= "workflows:\n";			
+		$output .= $workflowtext . "\n";
+
+		#### APPS
+		$output .= "  apps:\n";			
+		foreach my $app ( @$apps ) {
+			my $parameters = $app->{ parameters };
+			$self->logDebug( "parameters", $parameters );
+			delete $app->{ parameters };
+			my $profile = $app->{ profile };
+			$self->logDebug( "profile", $profile );
+			delete $app->{ profile };
+
+			$padding = 6;
+			my $apptext = YAML::Tiny::Dump $app;
+			$apptext =~ s/^\-+\n//;
+			$self->logDebug( "BEFORE padRows    apptext", $apptext );
+			$apptext = $self->padRows( $apptext, $padding );
+			$self->logDebug( "AFTER padRows    apptext", $apptext );
+			$output .= "    -\n" . $apptext . "\n";
+
+			#### PARAMETERS
+			$output .= "      parameters:\n";			
+			$padding = 8;
+			my $parametertext = YAML::Tiny::Dump $parameters;
+			$parametertext =~ s/^\-+\n//;
+			$self->logDebug( "BEFORE padRows    parametertext", $parametertext );
+			$parametertext = $self->padRows( $parametertext, $padding );
+			$self->logDebug( "AFTER padRows    parametertext", $parametertext );
+			$output .= $parametertext . "\n";
+
+			#### PROFILE
+			$output .= "      profile:\n";			
+			$padding = 8;
+			my $profiletext = $profile;
+			$profiletext =~ s/^\-+\n//;
+			$self->logDebug( "BEFORE padRows    profiletext", $profiletext );
+			$profiletext = $self->padRows( $profiletext, $padding );
+			$self->logDebug( "AFTER padRows    profiletext", $profiletext );
+			$output .= $profiletext . "\n";
+
+
+
+		}
 	}
-	$self->logDebug( "FINAL apps", \@apps );
 
-	my $finaloutput = $head . join( "\n", @apps ); 
-	
-	return $finaloutput;
+	return $output;
+
+}
+
+method padRows( $text, $padding ) {
+	my @lines = split "\n", $text;
+	foreach my $line ( @lines ) {
+		$line = " " x $padding . $line;
+	}
+
+	return join "\n", @lines;
 }
 
 method removeHigher ( $higher, $array ) {
@@ -859,15 +915,6 @@ method getOptions ( $argv, $arguments ) {
   return $options;
 }
 
-method getProfiles ( $file ) {
-	$self->logDebug( "file", $file );
-
-	return "" if not $file;
-
-	my $yaml = YAML::Tiny->read( $file );
-	
-	return $$yaml[0];
-}
 
 method getProfileYaml ( $profiles, $profilename ) {
 	$self->logDebug( "profilename", $profilename );
@@ -884,86 +931,21 @@ method getProfileYaml ( $profiles, $profilename ) {
 	return $profileyaml;
 }
 
-#  METHOD: doProfileInheritance 
-#
-#  PURPOSE: ADD FIELDS FROM ONE OR MORE INHERITED PROFILES.
-#
-#  THE ORDER OF PRIORITY IS "FIRST TO LAST",  I.E., IF THE 
-#
-#  inherits FIELD IS AS FOLLOWS:
-#
-#
-#   testprofile:
-#
-#			inherits : first,second,third
-#
-#
-#  ... THEN:
-#     
-#    1. THE PROFILES first, second AND third MUST ALSO BE PRESENT
-#
-#    IN THE profiles.yml FILE (EXITS IF THIS IS NOT THE CASE)
-#
-#    2. THE FIELDS FROM PROFILE first WILL BE ADDED TO THE FIELDS
-#
-#    IN PROFILE testprofile WITHOUT OVERWRITING EXISTING FIELDS IN
-#
-#    testprofile
-#
-#    3. THE FIELDS IN PROFILE second WILL SIMILARLY BE ADDED TO
-#
-#    PROFILE testprofile WITHOUT OVERWRITING ANY EXISTING FIELDS
-#
-#    4. LASTLY, THE FIELDS IN PROFILE third WOULD BE ADDED WITHOUT
-#
-#    OVERWRITING ANY FIELDS ORIGINALLY IN PROFILE testprofile OR
-#
-#    ADDED TO IT FROM PROFILES first AND second
-#
-method doProfileInheritance ( $profiles, $profilename ) {
-	$self->logDebug( "profiles", $profiles );
-	my $profile = $profiles->{$profilename};
-	my $inherits = $profile->{inherits};
-	$self->logDebug( "inherits", $inherits );
-	if ( not $inherits ) {
-		return $profile;
-	}
-
-	my @inheritedprofiles = split ",", $inherits;
-	foreach my $inheritedprofile ( @inheritedprofiles ) {
-		my $inherited = $profiles->{$inheritedprofile};
-		if ( not $inherited ) {
-			print "Inherited profile '$inheritedprofile' not found in profiles.yml file\n";
-			exit;
-		}
-
-		foreach my $key ( keys %$inherited ) {
-			$profile->{ $key } = $self->recurseInheritance ( $profile->{$key}, $inherited->{$key} ); 
-		}
-	}
-
-	return $profile;
-}
-
-method recurseInheritance ( $profilefield, $inheritedfield ) {
-	#### INHERITED FIELD DOES NOT EXIST IN profile SO ADD IT 
-	if ( not $profilefield ) {
-		return $inheritedfield;
-	}
-	#### OTHERWISE, RECURSE IF THE FIELD IS AN OBJECT
-	elsif ( ref( $profilefield ) ne "" and ref( $inheritedfield ) ne "" ) {
-		foreach my $key ( %$inheritedfield ) {
-			$profilefield->{$key} = $self->recurseInheritance( $profilefield->{$key}, $inheritedfield->{$key} );
-		}
-	}
-
-	#### OTHERWISE, KEEP THE EXISTING VALUE IN profile
-	return $profilefield;
-}
-
 method addWorkflow ( $projectname, $wkfile ) {
 	$self->logDebug("projectname", $projectname);
 	$self->logDebug("wkfile", $wkfile);
+
+	#### SET USERNAME AND OWNER
+	my $username    =   $self->setUsername();
+	my $owner       =   $username;
+	$self->logDebug("username", $username);
+
+	#### QUIT IF PROJECT NOT FOUND
+	if ( not $self->table()->isProject( $username, $projectname ) ) {
+		print "Can't find project: $projectname\n";
+		exit;
+	}
+
 
 	my $formats = [
 		[ "--name", "\\w.*" ],
@@ -976,11 +958,6 @@ method addWorkflow ( $projectname, $wkfile ) {
 
 # $self->logDebug( "DEBUG EXIT" ) and exit;
 
-
-	#### SET USERNAME AND OWNER
-	my $username    =   $self->setUsername();
-	my $owner       =   $username;
-	$self->logDebug("username", $username);
 
 	my $projecthash	=	$self->_getProjectHash($username, $projectname);
 	$self->logDebug("projecthash", $projecthash);
@@ -1008,21 +985,15 @@ method addWorkflow ( $projectname, $wkfile ) {
 		conf        =>  $self->conf(),
 		db          =>  $self->table()->db()
 	);
-	# $workflow->_getopts();
-
-
 	$workflow->_loadFile();
 	$workflow->workflownumber($workflownumber);
 	$self->logDebug("workflow->workflownumber()", $workflow->workflownumber());
 
-	my $profilename = $workflow->profile();
-	$self->logDebug( "profilename", $profilename );
-
-	my $profiles = $self->getProfiles( $profilefile, $profilename ); 
+	my $profiles = $self->getFileContents( $profilefile ); 
 	$self->logDebug( "profiles", $profiles );
 
 	$workflow->profiles( $profiles );
-    
+
 	#### GET WORKFLOW NAME FROM ARGUMENT
 	my $workflowname =  $workflow->workflowname();
 	if ( defined $options->{name} ) {
@@ -1068,9 +1039,11 @@ method addWorkflow ( $projectname, $wkfile ) {
 	$self->projectToDatabase($username, $projectobject);
 	
 	#### SAVE workflow TO DATABASE
-	$workflow->save();
+	my $success = $workflow->save();
 
-	print "Added workflow '$workflowname' at number $workflownumber in project '$projectname' for user '$username'\n";
+	if ( $success ) {
+		print "Added workflow '$workflowname' at number $workflownumber in project '$projectname' for user '$username'\n";
+	}
 }
 
 method deleteWorkflow ( $projectname, $workflowname ) {
@@ -1238,16 +1211,6 @@ method insertWorkflow ( $project, $wkfile, $workflownumber ) {
 	print "Inserted workflow '$workflowname' at number $workflownumber in project '$project' for user '$username'\n";
 }
 
-method getProfileHash ( $profile ) {
-	$self->logDebug( "profile", $profile );
-
-	my $yaml = YAML::Tiny->new();
-	my $yamlobject = $yaml->read_string( $profile );
-	my $data = $$yamlobject[0];
-	# $self->logDebug( "data", $data );
-
-	return $data;
-}
 
 method runWorkflow ( $projectname, $workflowid ) {
 
@@ -1277,16 +1240,16 @@ method runWorkflow ( $projectname, $workflowid ) {
 	#### GET WORKFLOW
 	my $workflowhash=	$self->getWorkflow($username, $projectname, $workflowname);	
 	print "Information for workflow not found: $workflowname\n" and exit if not defined $workflowhash;
-	my $profile = $workflowhash->{profile};
-	$self->logDebug( "profile", $profile );
-	my $profilehash = $self->getProfileHash( $profile );
+	my $profilesyaml = $workflowhash->{profiles};
+	$self->logDebug( "profilesyaml", $profilesyaml );
+	my $profilehash = $self->getProfileHash( $profilesyaml );
 	$self->logDebug( "profilehash", $profilehash );
 	my $runtype = $profilehash->{run}->{type};
 	my $hostname    = $profilehash->{host}->{name} || "";
 	$self->logDebug( "runtype", $runtype );
 	$self->logDebug( "hostname", $hostname );
 
-        my $thishost = hostname || "";
+  my $thishost = hostname || "";
 	$self->logDebug( "thishost", $thishost );
 	my $isremote = 0;
 	if ( $hostname ne "localhost" ) {
@@ -1300,8 +1263,8 @@ method runWorkflow ( $projectname, $workflowid ) {
 	    }
 	}
 	$self->logDebug( "isremote", $isremote );
-        my $hosttype = "Local";
-        $hosttype = "Remote" if $isremote;
+  my $hosttype = "Local";
+  $hosttype = "Remote" if $isremote;
 
 	#### SET HASH
 	$workflowhash->{dryrun}		=	$dryrun;
