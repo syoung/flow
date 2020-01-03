@@ -859,20 +859,25 @@ method getOptions ( $argv, $arguments ) {
   return $options;
 }
 
-method getProfileYaml ( $file, $profilename ) {
+method getProfiles ( $file ) {
 	$self->logDebug( "file", $file );
-	$self->logDebug( "profilename", $profilename );
 
-	return "" if not $file or not $profilename;
+	return "" if not $file;
 
 	my $yaml = YAML::Tiny->read( $file );
-	my $data = $$yaml[0];
-	# $self->logDebug( "data", $data );
+	
+	return $$yaml[0];
+}
 
-	my $profile = $self->doProfileInheritance( $data, $profilename );
+method getProfileYaml ( $profiles, $profilename ) {
+	$self->logDebug( "profilename", $profilename );
 
+	return "" if not $profilename;
+
+	my $profile = $self->doProfileInheritance( $profiles, $profilename );
 	$self->logDebug( "profile", $profile );
 
+	my $yaml = YAML::Tiny->new();
 	$$yaml[ 0 ] = $profile;
 	my $profileyaml = $yaml->write_string( $profile );
 
@@ -996,8 +1001,8 @@ method addWorkflow ( $projectname, $wkfile ) {
 	my $workflow = Flow::Workflow->new(
 		projectname =>  $projectname,
 		username    =>  $self->username(),
-    	number      =>  $workflownumber,
-  		inputfile   =>  $wkfile,
+    number      =>  $workflownumber,
+  	inputfile   =>  $wkfile,
 		log     	=>  $self->log(),
 		printlog    =>  $self->printlog(),
 		conf        =>  $self->conf(),
@@ -1013,10 +1018,10 @@ method addWorkflow ( $projectname, $wkfile ) {
 	my $profilename = $workflow->profile();
 	$self->logDebug( "profilename", $profilename );
 
-	my $profile = $self->getProfileYaml( $profilefile, $profilename ); 
-	$self->logDebug( "profile", $profile );
+	my $profiles = $self->getProfiles( $profilefile, $profilename ); 
+	$self->logDebug( "profiles", $profiles );
 
-	$workflow->profile( $profile );
+	$workflow->profiles( $profiles );
     
 	#### GET WORKFLOW NAME FROM ARGUMENT
 	my $workflowname =  $workflow->workflowname();
