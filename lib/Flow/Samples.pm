@@ -76,7 +76,7 @@ method loadSamples ($project, $table, $sqlfile, $tsvfile, $directory, $regex) {
 	$self->createTempTsvFile($username, $project, $tsvfile, $files);
 
 	#### LOAD TSV
-	my $success	=	$self->table()->db()->load($table, $tsvfile);
+	$success	=	$self->table()->db()->load($table, $tsvfile);
 	$self->logDebug("loadTsvFile   success", $success);
 
 	
