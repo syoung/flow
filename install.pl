@@ -13,7 +13,7 @@
 #
 #     - COPIES conf/config.yml FROM A TEMPLATE (SKIPS IF FILE ALREADY EXISTS) AND PROVIDES VALUES FOR THE FOLLOWING FIELDS:
 #       - core.INSTALLDIR (E.G.: /flow)
-#       - core.USERDIR: /home
+#       - core.HOMEDIR: /home
 #
 #     - RUNS envars-standalone.sh IN ORDER TO AUTOMATICALLY LOAD THE FOLLOWING MODIFIED ENVIRONMENT VARIABLES ON CONNNECTION TO THE CONTAINER:
 #       -  THE 'PATH' ENVIRONMENT VARIABLE, ENABLING ACCESS TO: 
@@ -126,17 +126,17 @@ sub replaceFields {
   my $os       = shift;
   my $contents = shift;
 
-  my $userdir = "/home";
+  my $homedir = "/home";
   if ( $os eq "MSWin32" ) {
-    $userdir = "C:\Users";
+    $homedir = "C:\Users";
   }
   elsif ( $os eq "darwin" ) {
-    $userdir = "/Users"
+    $homedir = "/Users"
   }
 
   #### REPLACE FIELDS
   $contents =~ s/<INSTALLDIR>/$Bin/;
-  $contents =~ s/<USERDIR>/$userdir/;
+  $contents =~ s/<HOMEDIR>/$homedir/;
   print "FINAL CONTENTS: $contents\n";
 
   return $contents;

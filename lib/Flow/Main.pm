@@ -18,6 +18,7 @@ use Data::Dumper;
 use YAML;
 use Sys::Hostname;
 use File::Path qw(make_path remove_tree);
+use FindBin qw($Bin);
 
 #### INTERNAL
 use Flow::Project;
@@ -402,11 +403,14 @@ method orderedOutput ( $project ) {
 			my $profile = $app->{ profile };
 			$self->logDebug( "profile", $profile );
 			delete $app->{ profile };
+			my $profilename = $app->{ profilename };
+			$self->logDebug( "profilename", $profilename );
+			delete $app->{ profilename };
 
 			$padding = 6;
 			my $apptext = YAML::Tiny::Dump $app;
 			$apptext =~ s/^\-+\n//;
-			$self->logDebug( "BEFORE padRows    apptext", $apptext );
+			# $self->logDebug( "BEFORE padRows    apptext", $apptext );
 			$apptext = $self->padRows( $apptext, $padding );
 			$self->logDebug( "AFTER padRows    apptext", $apptext );
 			$output .= "    -\n" . $apptext . "\n";
@@ -416,17 +420,18 @@ method orderedOutput ( $project ) {
 			$padding = 8;
 			my $parametertext = YAML::Tiny::Dump $parameters;
 			$parametertext =~ s/^\-+\n//;
-			$self->logDebug( "BEFORE padRows    parametertext", $parametertext );
+			# $self->logDebug( "BEFORE padRows    parametertext", $parametertext );
 			$parametertext = $self->padRows( $parametertext, $padding );
 			$self->logDebug( "AFTER padRows    parametertext", $parametertext );
 			$output .= $parametertext . "\n";
 
 			#### PROFILE
+			$output .= "      profilename: $profilename\n";			
 			$output .= "      profile:\n";			
 			$padding = 8;
 			my $profiletext = $profile;
 			$profiletext =~ s/^\-+\n//;
-			$self->logDebug( "BEFORE padRows    profiletext", $profiletext );
+			# $self->logDebug( "BEFORE padRows    profiletext", $profiletext );
 			$profiletext = $self->padRows( $profiletext, $padding );
 			$self->logDebug( "AFTER padRows    profiletext", $profiletext );
 			$output .= $profiletext . "\n";
@@ -960,7 +965,6 @@ method addWorkflow ( $projectname, $wkfile ) {
 		exit;
 	}
 
-
 	my $formats = [
 		[ "--name", "\\w.*" ],
 		[ "--profiles", ".+" ], 
@@ -969,9 +973,6 @@ method addWorkflow ( $projectname, $wkfile ) {
 	$self->logDebug("options", $options);
 	my $profilefile = $options->{profiles};
 	$self->logDebug( "profilefile", $profilefile );
-
-# $self->logDebug( "DEBUG EXIT" ) and exit;
-
 
 	my $projecthash	=	$self->_getProjectHash($username, $projectname);
 	$self->logDebug("projecthash", $projecthash);
@@ -1003,7 +1004,8 @@ method addWorkflow ( $projectname, $wkfile ) {
 	$workflow->workflownumber($workflownumber);
 	$self->logDebug("workflow->workflownumber()", $workflow->workflownumber());
 
-	my $profiles = $self->getFileContents( $profilefile ); 
+	my $profiles = "";
+	$self->getFileContents( $profilefile ) if $profilefile; 
 	$self->logDebug( "profiles", $profiles );
 
 	$workflow->profiles( $profiles );
@@ -1060,15 +1062,23 @@ method addWorkflow ( $projectname, $wkfile ) {
 	}
 }
 
-method deleteWorkflow ( $projectname, $workflowname ) {
+method deleteWorkflow ( $projectname, $workflowid ) {
 	$self->logDebug("projectname", $projectname);
-	$self->logDebug("workflowname", $workflowname);
+	$self->logDebug("workflowid", $workflowid);
 	print "Project not defined.\nUSAGE: flow deleteworkflow <project> <workflowname>\n" and exit if not defined $projectname;
-	print "Project not defined.\nUSAGE: flow deleteworkflow <project> <workflowname>\n" and exit if not defined $workflowname;
+	print "Workflow not defined.\nUSAGE: flow deleteworkflow <project> <workflowname/workflownumber>\n" and exit if not defined $workflowid;
 
 	#### REMOVE PROJECT FROM ALL DATABASE TABLES
 	my $username    =   $self->setUsername();
 	my $owner       =   $username;
+
+	#### GET WORKFLOW NAME IF workflownumber PROVIDED
+	my $workflowname   = $workflowid;
+	if ( $workflowid =~ /^\d+$/ ) {
+		my $workflownumber = $workflowid;
+		$workflowname = $self->table()->getWorkflowByNumber( $username, $projectname, $workflownumber );
+	}
+	$self->logDebug("workflowname", $workflowname);
 
 	#### VERIFY WORKFLOW EXISTS
 	my $query       =   "SELECT * FROM workflow
@@ -1232,13 +1242,22 @@ method runWorkflow ( $projectname, $workflowid ) {
 	my $username    =   $self->setUsername();
 	my $owner       =   $username;
 
-	#### GET WORKFLOW NAME
+	#### GET WORKFLOW NAME IF workflownumber PROVIDED
 	my $workflowname   = $workflowid;
 	if ( $workflowid =~ /^\d+$/ ) {
 		my $workflownumber = $workflowid;
 		$workflowname = $self->table()->getWorkflowByNumber( $username, $projectname, $workflownumber );
 	}
 	$self->logDebug("workflowname", $workflowname);
+
+	my $formats = [
+		[ "--dryrun" ],
+	];
+	my $options = $self->getOptions( \@ARGV, $formats );
+	$self->logDebug("options", $options);
+	my $profilefile = $options->{profiles};
+	$self->logDebug( "profilefile", $profilefile );
+
 
 	#### GET OPTS (E.G., WORKFLOW)
 	$self->_getopts();
@@ -1277,7 +1296,11 @@ method runWorkflow ( $projectname, $workflowid ) {
 		}
 	}
 
-	$self->logDebug( "stages", $stages );
+	# $self->logDebug( "stages", $stages );
+	$self->logDebug( "# stages", scalar( @$stages ) );
+
+	my $success = $self->runStages( $stages, $dryrun );
+	$self->logDebug( "success", $success );
 
 	# my $samplestring	=	$self->samplestring();
 	# $self->logDebug("samplestring", $samplestring);
@@ -1325,20 +1348,49 @@ method getSampleHash () {
 	return $samplehash;
 }
 
-
 method stageFactory ( $stage ) {
-	my $profileyaml = $stage->{profile};
-	$self->logDebug( "profileyaml", $profileyaml );
-	my $profilehash = $self->getProfileHash( $profileyaml );
+	my $profilehash = $stage->{profilehash};
 	$self->logDebug( "profilehash", $profilehash );
 
-
-	my $runtype = $profilehash->{run}->{type};
-	my $hostname    = $profilehash->{host}->{name} || "";
+	my $runtype = $self->getProfileValue( "run:type", $profilehash );
+	$runtype = "Shell" if not $runtype;
+	my $hostname = $self->getProfileValue( "host:name", $profilehash );
+	$hostname = "Local" if not $hostname;
 	$self->logDebug( "runtype", $runtype );
 	$self->logDebug( "hostname", $hostname );
 
+	my $hosttype = $self->getHostType( $hostname );
+	$self->logDebug( "hosttype", $hosttype );
+
+
+#### MONITOR IS CREATED BY Monitor::Factory BASED ON
+#### VALUE OF run:type:scheduler
+
+  # #### GET MONITOR
+  # $self->logDebug( "BEFORE monitor = self->updateMonitor()" );
+  # my $monitor  =   undef;
+  # $monitor = $self->updateMonitor();
+  # $self->logDebug( "AFTER XXX monitor = self->updateMonitor()" );
+
+
+
+  $hosttype = $self->cowCase( $hosttype );
+  $runtype = $self->cowCase( $runtype );
+  print "Engine::Workflow    runtype: $runtype\n";
+  print "Engine::Workflow    hosttype: $hosttype\n";
+
+  my $location    = "$Bin/../../Engine/$hosttype/$runtype/Stage.pm";
+  $self->logDebug( "location", $location );
+  my $class          = "Engine::" . $hosttype . "::" . $runtype . "::Stage";
+  require $location;
+
+  return $class->new( $stage );
+}
+
+method getHostType ( $hostname ) {
+	use Sys::Hostname;
   my $thishost = hostname || "";
+
 	$self->logDebug( "thishost", $thishost );
 	my $isremote = 0;
 	if ( $hostname ne "localhost" ) {
@@ -1355,33 +1407,7 @@ method stageFactory ( $stage ) {
   my $hosttype = "Local";
   $hosttype = "Remote" if $isremote;
 
-
-
-#### MONITOR IS CREATED BY Monitor::Factory BASED ON
-#### VALUE OF run:type:scheduler
-
-  # #### GET MONITOR
-  # $self->logDebug( "BEFORE monitor = self->updateMonitor()" );
-  # my $monitor  =   undef;
-  # $monitor = $self->updateMonitor();
-  # $self->logDebug( "AFTER XXX monitor = self->updateMonitor()" );
-
-
-
-  # my $modulepath =  $INC{"Engine/Workflow.pm"};
-  # my ($path) = $modulepath =~ /^(.+?)\/[^\/]+.pm$/; 
-
-
-  # $hosttype = cowCase( $hosttype );
-  # $runtype = cowCase( $runtype );
-  # print "Engine::Workflow    runtype: $runtype\n";
-  # print "Engine::Workflow    hosttype: $hosttype\n";
-
-  # my $location    = "$path/$hosttype/$runtype/Workflow.pm";
-  # $class          = "Engine::" . $hosttype . "::" . $runtype . "::Workflow";
-  # require $location;
-
-  # return $class->new( $args );
+  return $hosttype;
 }
 
 method cowCase ( $string ) {
@@ -1391,6 +1417,7 @@ method cowCase ( $string ) {
 }
 
 method setStages ( $workflowhash, $samplehash ) {
+  
   # $self->logGroup( "Flow::Main::setStages" );
 
   my $username             =    $workflowhash->{username};
@@ -1420,22 +1447,17 @@ method setStages ( $workflowhash, $samplehash ) {
   
   #### GET FILEROOT & USERHOME
   my $fileroot = $self->util()->getFileroot( $username );  
-  $self->logDebug( "fileroot", $fileroot );
-  
   my $userhome = $self->util()->getUserhome( $username );  
+  $self->logDebug( "fileroot", $fileroot );  
   $self->logDebug( "userhome", $userhome );
 
-  #### SET FILE DIRS
-  my ( $scriptdir, $stdoutdir, $stderrdir ) = $self->setFileDirs( $fileroot, $projectname, $workflowname );
-  $self->logDebug( "scriptdir", $scriptdir );
-  
+  #### SET OUTPUT DIR
+  my $outputdir =  "$fileroot/$projectname/$workflowname";
+
   #### SET WORKFLOW PROCESS ID
   $self->workflowpid($$);  
   my $workflowpid = $self->workflowpid();
   
-  #### SET OUTPUT DIR
-  my $outputdir =  "$fileroot/$projectname/$workflowname";
-
   # #### GET ENVIRONMENT VARIABLES
   # my $envar = $self->envar();
 
@@ -1447,7 +1469,6 @@ method setStages ( $workflowhash, $samplehash ) {
     
     my $stagenumber  =  $stage->{appnumber};
     my $stagename    =  $stage->{appname};
-    my $id          =  $samplehash->{samplename};
     my $successor    =  $stage->{successor};
     $self->logDebug( "successor", $successor ) if defined $successor and $successor ne "";
     
@@ -1455,13 +1476,17 @@ method setStages ( $workflowhash, $samplehash ) {
     
     my $stage_number = $counter + 1;
 
+    #### GET PROFILEHASH
+    my $profile = $stage->{profile};
+    $self->logDebug( "profile", $profile );
+		$stage->{profilehash}  =    $self->yamlToData( $profile );
+
     $stage->{username}     =    $username;
     $stage->{workflowpid}  =    $workflowpid;
     $stage->{table}        =    $self->table();
     $stage->{conf}         =    $self->conf();
     $stage->{fileroot}     =    $fileroot;
     $stage->{userhome}     =    $userhome;
-
 
     #### MAX JOBS
     $stage->{maxjobs}         =    $self->maxjobs();
@@ -1475,20 +1500,7 @@ method setStages ( $workflowhash, $samplehash ) {
     $stage->{printlog}        =    $self->printlog();
     $stage->{logfile}         =    $self->logfile();
 
-    #### SET SCRIPT, STDOUT AND STDERR FILES
-    $stage->{scriptfile}      =  	 "$scriptdir/$stagenumber-$stagename.sh";
-    $stage->{stdoutfile}      =  	 "$stdoutdir/$stagenumber-$stagename.stdout";
-    $stage->{stderrfile}      =    "$stderrdir/$stagenumber-$stagename.stderr";
-
-    if (  defined $id ) {
-      $stage->{scriptfile}    =    "$scriptdir/$stagenumber-$stagename-$id.sh";
-      $stage->{stdoutfile}    =    "$stdoutdir/$stagenumber-$stagename-$id.stdout";
-      $stage->{stderrfile}    =    "$stderrdir/$stagenumber-$stagename-$id.stderr";
-    }
-
     my $stageobject = $self->stageFactory( $stage );
-
-    # my $stageobject = Engine::Cluster::Stage->new( $stage );
 
     #### NEAT PRINT STAGE
     #$stageobject->toString();
@@ -1496,8 +1508,6 @@ method setStages ( $workflowhash, $samplehash ) {
     push @$stageobjects, $stageobject;
   }
 
-  #### SET self->stages()
-  # $self->stages( $stageobjects );
   $self->logDebug( "final no. stageobjects", scalar( @$stageobjects ) );
   
   # $self->logGroupEnd( "Flow::Main::setStages" );
@@ -1583,27 +1593,6 @@ method setStartStop ($stages, $json) {
   return ($start, $stop);
 }
 
-method setFileDirs ($fileroot, $projectname, $workflowname) {
-  $self->logDebug("fileroot", $fileroot);
-  $self->logDebug("projectname", $projectname);
-  $self->logDebug("workflowname", $workflowname);
-
-  my $scriptdir = File::Path::make_path( "$fileroot/$projectname/$workflowname/script" );
-  my $stdoutdir = File::Path::make_path( "$fileroot/$projectname/$workflowname/stdout" );
-  my $stderrdir = File::Path::make_path( "$fileroot/$projectname/$workflowname/stdout" );
-  $self->logDebug("scriptdir", $scriptdir);
-
-  #### CREATE DIRS  
-  File::Path::make_path ( $scriptdir ) if not -d $scriptdir;
-  File::Path::make_path ( $stdoutdir ) if not -d $stdoutdir;
-  File::Path::make_path ( $stderrdir ) if not -d $stderrdir;
-
-  $self->logError("Cannot create directory scriptdir: $scriptdir") and return undef if not -d $scriptdir;
-  $self->logError("Cannot create directory stdoutdir: $stdoutdir") and return undef if not -d $stdoutdir;
-  $self->logError("Cannot create directory stderrdir: $stderrdir") and return undef if not -d $stderrdir;    
-
-  return $scriptdir, $stdoutdir, $stderrdir;
-}
 
 
 
@@ -1640,17 +1629,20 @@ method setFileDirs ($fileroot, $projectname, $workflowname) {
     # #### SET SGE ENVIRONMENT VARIABLES
     # $stage->{envar} = $envar;
     
-method runStages ( $profile, $stages, $dryrun ) {
+method runStages ( $stages, $dryrun ) {
     $self->logDebug("no. stages", scalar(@$stages));
+    $self->logDebug( "dryrun", $dryrun );
+
+    # $self->logDebug( "DEBUG EXIT" ) and exit;
 
     # #### SET EXCHANGE    
     # my $exchange = $self->conf()->getKey("core:EXCHANGE");
     # $self->logDebug("exchange", $exchange);
     
-    #### SELF IS SIPHON WORKER
-    my $worker     =    0;
-    $worker        =    1 if defined $self->worker();
-    $self->logDebug("worker", $worker);
+    # #### SELF IS SIPHON WORKER
+    # my $worker     =    0;
+    # $worker        =    1 if defined $self->worker();
+    # $self->logDebug("worker", $worker);
     
 
     for ( my $stagecounter = 0; $stagecounter < @$stages; $stagecounter++ ) {
@@ -1664,12 +1656,12 @@ method runStages ( $profile, $stages, $dryrun ) {
             next if $status eq "skip"
         }
 
-        my $stage_number = $stage->appnumber();
-        my $stage_name = $stage->appname();
-        my $username    =    $stage->username();
-        my $projectname        =    $stage->projectname();
-        my $workflowname    =    $stage->workflowname();
-        my $mysqltime    =    $self->getMysqlTime();
+        my $stage_number     = $stage->appnumber();
+        my $stage_name       = $stage->appname();
+        my $username         =    $stage->username();
+        my $projectname      =    $stage->projectname();
+        my $workflowname     =    $stage->workflowname();
+        my $mysqltime        =    $self->util()->getMysqlTime();
         $self->logDebug("mysqltime", $mysqltime);
         $stage->started($mysqltime);
         
@@ -1687,19 +1679,19 @@ method runStages ( $profile, $stages, $dryrun ) {
         #### SET STATUS TO running
         $stage->setStatus('running');
 
-        #### NOTIFY STATUS
-        if ( $worker ) {
-            $self->updateJobStatus($stage, "started");
-        }
-        else {
-            my $data = $self->_getStatus($username, $projectname, $workflowname);
-            $self->logDebug("DOING notifyStatus(data)");
-            # $self->notifyStatus($data) if defined $exchange and $exchange eq "true";
-        }
+        # #### NOTIFY STATUS
+        # if ( $worker ) {
+        #     $self->updateJobStatus($stage, "started");
+        # }
+        # else {
+        #     my $data = $self->_getStatus($username, $projectname, $workflowname);
+        #     $self->logDebug("DOING notifyStatus(data)");
+        #     # $self->notifyStatus($data) if defined $exchange and $exchange eq "true";
+        # }
         
         ####  RUN STAGE
         $self->logDebug("Running stage $stage_number", $stage_name);    
-        my ($exitcode) = $stage->run( $profile, $dryrun );
+        my ($exitcode) = $stage->run( $dryrun );
         $self->logDebug("Stage $stage_number-$stage_name exitcode", $exitcode);
 
         #### STOP IF THIS STAGE DIDN'T COMPLETE SUCCESSFULLY
@@ -1709,28 +1701,29 @@ method runStages ( $profile, $stages, $dryrun ) {
             $stage->setStatus('completed');
             $self->bigDisplayEnd("'$projectname.$workflowname' stage $stage_number $stage_name status: COMPLETED");
             
-            #### NOTIFY STATUS
-            my $status    =    "completed";
-            if ( $worker ) {
-                $self->logDebug("DOING self->updateJobStatus: $status");
-                $self->updateJobStatus($stage, $status);
-            }
-            else {
-                my $data = $self->_getStatus($username, $projectname, $workflowname);
-                # $self->notifyStatus($data) if defined $exchange and $exchange eq "true";
-            }
+            # #### NOTIFY STATUS
+            # my $status    =    "completed";
+            # if ( $worker ) {
+            #     $self->logDebug("DOING self->updateJobStatus: $status");
+            #     $self->updateJobStatus($stage, $status);
+            # }
+            # else {
+            #     my $data = $self->_getStatus($username, $projectname, $workflowname);
+            #     # $self->notifyStatus($data) if defined $exchange and $exchange eq "true";
+            # }
         }
         else {
             $stage->setStatus('error');
             $self->bigDisplayEnd("'$projectname.$workflowname' stage $stage_number $stage_name status: ERROR");
-            #### NOTIFY ERROR
-            if ( $worker ) {
-                $self->updateJobStatus($stage, "exitcode: $exitcode");
-            }
-            else {
-                my $data = $self->_getStatus($username, $projectname, $workflowname);
-                # $self->notifyError($data, "Workflow '$projectname.$workflowname' stage #$stage_number '$stage_name' failed with exitcode: $exitcode") if defined $exchange and $exchange eq "true";
-            }
+
+            # #### NOTIFY ERROR
+            # if ( $worker ) {
+            #     $self->updateJobStatus($stage, "exitcode: $exitcode");
+            # }
+            # else {
+            #     my $data = $self->_getStatus($username, $projectname, $workflowname);
+            #     # $self->notifyError($data, "Workflow '$projectname.$workflowname' stage #$stage_number '$stage_name' failed with exitcode: $exitcode") if defined $exchange and $exchange eq "true";
+            # }
             
             $self->logDebug("Exiting runStages");
             return 0;
@@ -1743,6 +1736,10 @@ method runStages ( $profile, $stages, $dryrun ) {
         $self->logDebug("stagecounter", $stagecounter);    
     }   
     
+
+$self->logDebug( "DEBUG EXIT" ) and exit;
+
+
     return 1;
 }
 
@@ -2309,6 +2306,24 @@ method loadCmd {
 	$self->_write();
 	
 	return 1;
+}
+
+method bigDisplayBegin ($message) {
+  print qq{
+##########################################################################
+#### $message
+####
+};
+  
+}
+
+method bigDisplayEnd ($message) {
+  print qq{
+####
+#### $message
+##########################################################################
+};
+  
 }
 
 #__PACKAGE__->meta->make_immutable( inline_constructor => 0 );

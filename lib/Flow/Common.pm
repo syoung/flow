@@ -170,13 +170,19 @@ method replaceTags ( $data, $profiledata ) {
       my $value = $self->getProfileValue( $keystring, $profiledata );
       $self->logDebug( "value", $value );
 
+      if ( not $value ) {
+        $self->logDebug( "Can't find profile value for key: $keystring" );
+        print "Can't find profile value for key: $keystring\n";
+        return undef;
+      }
+
       #### ONLY INSERT SCALAR VALUES
       if ( ref( $value ) ne "" ) {
         print "Profile value is not a string: " . YAML::Tiny::Dump( $value ) . "\n";
         exit;
       }
 
-      $string =~ s/<profile:$keystring/$value/ if $value;
+      $string =~ s/<profile:$keystring>/$value/ if $value;
       $data->{ $key } = $string;
     } 
   }

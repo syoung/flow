@@ -526,6 +526,12 @@ method saveWorkflowToDatabase ($workflowobject) {
 
 	if ( $profiledata ) {
 		$workflowdata = $self->replaceTags( $workflowdata, $profiledata );
+		if ( not $workflowdata ) {
+			print "Failure in Flow::Workflow::replaceTags method.\n";
+			print "workflowdata: " . YAML::Tiny::Dump( $workflowdata ) . "\n";
+			print "profiledata: " . YAML::Tiny::Dump( $profiledata ) . "\n";
+			exit;
+		}
 	}
 
 	#### ADD WORKFLOW
