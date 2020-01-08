@@ -469,15 +469,22 @@ method orderedOutput ( $project ) {
 			$output .= $parametertext . "\n";
 
 			#### PROFILE
-			$output .= "      profilename: $profilename\n";			
+			if ( $profilename ) {
+				$output .= "      profilename: $profilename\n";			
+			}
 			$output .= "      profile:\n";			
 			$padding = 8;
 			my $profiletext = $profile;
-			$profiletext =~ s/^\-+\n//;
-			# $self->logDebug( "BEFORE padRows    profiletext", $profiletext );
-			$profiletext = $self->padRows( $profiletext, $padding );
-			$self->logDebug( "AFTER padRows    profiletext", $profiletext );
-			$output .= $profiletext . "\n";
+			if ( not $profile or $profile =~ /^--- \{\}\s*$/ ) {
+				$output =~ s/\n$/ {}\n/; 
+			}
+			else {
+				$profiletext =~ s/^\-+\n//;
+				# $self->logDebug( "BEFORE padRows    profiletext", $profiletext );
+				$profiletext = $self->padRows( $profiletext, $padding );
+				$self->logDebug( "AFTER padRows    profiletext", $profiletext );
+				$output .= $profiletext . "\n";				
+			}
 		}
 	}
 
