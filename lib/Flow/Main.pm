@@ -1066,7 +1066,7 @@ method addWorkflow ( $projectname, $wkfile ) {
 	$self->logDebug("workflow->workflownumber()", $workflow->workflownumber());
 
 	my $profiles = "";
-	$self->getFileContents( $profilefile ) if $profilefile; 
+	$profiles = $self->getFileContents( $profilefile ) if $profilefile; 
 	$self->logDebug( "profiles", $profiles );
 
 	$workflow->profiles( $profiles );
@@ -1332,12 +1332,9 @@ method runWorkflow ( $projectname, $workflowid ) {
 	];
 	my $options = $self->getOptions( \@ARGV, $formats );
 	$self->logDebug("options", $options);
-	my $profilefile = $options->{profiles};
-	$self->logDebug( "profilefile", $profilefile );
 
-
-	#### GET OPTS (E.G., WORKFLOW)
-	$self->_getopts();
+	# #### GET OPTS (E.G., WORKFLOW)
+	# $self->_getopts();
 	
 	my $dryrun			=		$self->dryrun();
 	my $start				=		$self->start() || 1;
@@ -1722,6 +1719,7 @@ method runStages ( $stages, $dryrun ) {
     # $self->logDebug("worker", $worker);
     
 
+
     for ( my $stagecounter = 0; $stagecounter < @$stages; $stagecounter++ ) {
         $self->logDebug("stagecounter", $stagecounter);
         my $stage = $$stages[$stagecounter];
@@ -1818,6 +1816,55 @@ $self->logDebug( "DEBUG EXIT" ) and exit;
 
 
     return 1;
+}
+
+method stopWorkflow ( $username, $projectname, $workflowname, $options ) {
+  $self->logDebug("projectname", $projectname);
+  $self->logDebug("workflowname", $workflowname);
+  
+  #### GET ALL STAGES FOR THIS WORKFLOW
+  my $query = qq{SELECT * FROM stage
+WHERE username ='$username'
+AND projectname = '$projectname'
+AND workflowname = '$workflowname'
+AND status='running'
+ORDER BY appnumber};
+  $self->logDebug("$query");
+  my $stages = $self->table()->db()->queryhasharray($query);
+  $self->logDebug("stages", $stages);
+
+  my $messages = $self->killStages( $stages );
+  
+  #### UPDATE STAGE STATUS TO 'stopped'
+  my $update_query = qq{UPDATE stage
+SET status = 'stopped'
+WHERE username = '$username'
+AND projectname = '$projectname'
+AND workflowname = '$workflowname'
+AND status = 'running'
+};
+  $self->logDebug("$update_query\n");
+  my $success = $self->table()->db()->do($update_query);
+
+  return $success;    
+}
+
+method killStages ( $stages ) {
+#### 1. 'kill -9' THE PROCESS IDS OF ANY RUNNING STAGE OF THE WORKFLOW
+#### 2. INCLUDES STAGE PID, App PARENT PID AND App CHILD PID)
+
+    $self->logDebug("stages", $stages);
+    my $messages = [];
+    foreach my $stage ( @$stages )
+    {
+        #### OTHERWISE, KILL ALL PIDS
+        push @$messages, $self->util()->killPid($stage->{childpid}) if defined $stage->{childpid};
+        push @$messages, $self->util()->killPid($stage->{parentpid}) if defined $stage->{parentpid};
+        push @$messages, $self->util()->killPid($stage->{stagepid}) if defined $stage->{stagepid};
+        push @$messages, $self->util()->killPid($stage->{workflowpid}) if defined $stage->{workflowpid};
+    }
+
+    return $messages;
 }
 
 
