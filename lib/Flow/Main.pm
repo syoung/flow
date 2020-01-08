@@ -293,15 +293,38 @@ WHERE username='$username'};
   }
 }
 
-method desc ( $projectname ) {
+method describeUsage () {
+	return "\nUSAGE: flow (desc|describe) <projectname> [workflowname/workflownumber]\n\n"; 
+}
+
+method describe ( $projectname = undef, $workflowid = undef ) {
 	$self->logDebug("projectname", $projectname);
+	$self->logDebug("workflowid", $workflowid);
+
+	#### CHECK INPUTS
+	if ( not defined $projectname ) {
+		print "*** Project not defined ***\n";
+		print $self->describeUsage(); 
+		exit ;
+	}
+
+	#### REMOVE PROJECT FROM ALL DATABASE TABLES
+	my $username    =   $self->setUsername();
+	my $owner       =   $username;
+	print "username not defined\n" and exit if not defined $username;
+
+	#### GET WORKFLOW NAME IF workflownumber PROVIDED
+	my $workflowname   = $workflowid;
+	if ( $workflowname ) {
+		if ( $workflowid =~ /^\d+$/ ) {
+			my $workflownumber = $workflowid;
+			$workflowname = $self->table()->getWorkflowByNumber( $username, $projectname, $workflownumber );
+		}		
+	}
+	$self->logDebug("workflowname", $workflowname);
 
 	#### GET OPTS (E.G., WORKFLOW)
 	$self->_getopts();
-
-	#### SET USERNAME AND OWNER
-	my $username    =   $self->setUsername();
-	print "username not defined\n" and exit if not defined $username;
 
 	my $data = {
 		username 	=> $username,
@@ -314,6 +337,10 @@ method desc ( $projectname ) {
 
 	my $workflows = $self->table()->getWorkflowsByProject( $project );
 	foreach my $workflow ( @$workflows ) {
+		if ( $workflowname ) {
+			next if $workflowname ne $workflow->{workflowname};
+		}
+
 		my $apps = $self->table()->getStagesByWorkflow( $workflow );
 		foreach my $app ( @$apps ) {
 			$self->logDebug("app", $app);
@@ -374,6 +401,15 @@ method orderedOutput ( $project ) {
 	$output .= YAML::Tiny::Dump $project;
 	$output =~ s/^\-+\n//;
 
+	#### WORKFLOWS
+	$output .= "workflows:\n";			
+
+	#### HANDLE NO WORKFLOWS
+	if ( scalar( @$workflows ) == 0 ) {
+		$output =~ s/\n$/ []\n/;
+	}	
+
+	#### OTHERWISE, PRINT WORKFLOWS
 	foreach my $workflow ( @$workflows ) {
 		my $apps = $workflow->{ apps };
 		$self->logDebug( "apps", $apps );
@@ -391,11 +427,17 @@ method orderedOutput ( $project ) {
 		$workflowtext = $self->padRows( $workflowtext, $padding );
 		$self->logDebug( "AFTER padRows    workflowtext", $workflowtext );
 
-		$output .= "workflows:\n";			
 		$output .= $workflowtext . "\n";
 
 		#### APPS
-		$output .= "  apps:\n";			
+		$output .= "  apps:\n";
+
+		#### HANDLE NO APPS
+		if ( scalar( @$apps ) == 0 ) {
+			$output =~ s/\n$/ []\n/;
+		}	
+
+		#### OTHERWISE, PRINT APPS
 		foreach my $app ( @$apps ) {
 			my $parameters = $app->{ parameters };
 			$self->logDebug( "parameters", $parameters );
@@ -409,6 +451,7 @@ method orderedOutput ( $project ) {
 
 			$padding = 6;
 			my $apptext = YAML::Tiny::Dump $app;
+			$self->logDebug( "apptext", $apptext );
 			$apptext =~ s/^\-+\n//;
 			# $self->logDebug( "BEFORE padRows    apptext", $apptext );
 			$apptext = $self->padRows( $apptext, $padding );
@@ -669,8 +712,19 @@ method loadProject {
 	$self->_addProject($projectobject);
 }
 
+method deleteProjectUsage () {
+	return "\nUSAGE: flow (delp|deleteproject) <projectname>\n\n"; 
+}
+
 method deleteProject ( $projectname ) {
 	$self->logDebug("projectname", $projectname);
+
+	#### CHECK INPUTS
+	if ( not defined $projectname ) {
+		print "*** Project not defined ***\n";
+		print $self->deleteProjectUsage(); 
+		exit ;
+	}
 
 	#### REMOVE PROJECT FROM ALL DATABASE TABLES
 	my $username    =   $self->setUsername();
@@ -1062,11 +1116,26 @@ method addWorkflow ( $projectname, $wkfile ) {
 	}
 }
 
-method deleteWorkflow ( $projectname, $workflowid ) {
+
+method deleteWorkflowUsage () {
+	return "\nUSAGE: flow (delw|deleteworkflow) <projectname> <workflowname/workflownumber>\n\n"; 
+}
+
+method deleteWorkflow ( $projectname = undef, $workflowid = undef) {
 	$self->logDebug("projectname", $projectname);
 	$self->logDebug("workflowid", $workflowid);
-	print "Project not defined.\nUSAGE: flow deleteworkflow <project> <workflowname>\n" and exit if not defined $projectname;
-	print "Workflow not defined.\nUSAGE: flow deleteworkflow <project> <workflowname/workflownumber>\n" and exit if not defined $workflowid;
+
+	#### CHECK INPUTS
+	if ( not defined $projectname ) {
+		print "*** Project not defined ***\n";
+		print $self->deleteWorkflowUsage(); 
+		exit ;
+	}
+	if ( not defined $workflowid ) {
+		print "*** Workflow not defined ***\n";
+		print $self->deleteWorkflowUsage(); 
+		exit ;
+	}
 
 	#### REMOVE PROJECT FROM ALL DATABASE TABLES
 	my $username    =   $self->setUsername();
@@ -1079,6 +1148,7 @@ method deleteWorkflow ( $projectname, $workflowid ) {
 		$workflowname = $self->table()->getWorkflowByNumber( $username, $projectname, $workflownumber );
 	}
 	$self->logDebug("workflowname", $workflowname);
+	print "Can't find workflow '$workflowid' in project '$projectname'\n" and exit if not $workflowname;
 
 	#### VERIFY WORKFLOW EXISTS
 	my $query       =   "SELECT * FROM workflow

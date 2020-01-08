@@ -122,6 +122,8 @@ usage() if $subcommand !~ /^(list|add|del|delete|load|desc|edit|insert|run|show)
 my $method = $subcommand;
 
 #### SHORTCUTS
+$method = "describe" if $subcommand eq "desc";
+
 $subcommand = "addproject" if $subcommand eq "addp";
 $subcommand = "runproject" if $subcommand eq "runp";
 $subcommand = "deleteproject" if $subcommand eq "delp";
