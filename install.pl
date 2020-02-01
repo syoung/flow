@@ -42,29 +42,29 @@ my $CENTOS_VERSION  = "7.7";
 #### GET OPERATING SYSTEM
 my $os = $^O;
 
-# #### CHANGE TO FOLDER OF THIS FILE
-# chdir( $Bin );
+#### CHANGE TO FOLDER OF THIS FILE
+chdir( $Bin );
 
-# ##    1. INSTALL ALL SUBMODULES
-# updateSubmodules ();
+##    1. INSTALL ALL SUBMODULES
+updateSubmodules ();
 
 ##    2. CHECKOUT OS-SPECIFIC BRANCH OF perl SUBMODULE
 checkoutPerlBranch( $os );
 
-# ##    3. COPY DB TEMPLATE IF NOT EXISTS
-# copyDbFile();
+##    3. COPY DB TEMPLATE IF NOT EXISTS
+copyDbFile();
 
-# ##    4. COPY CONFIG FILE FROM TEMPLATE IF NOT EXISTS
-# copyConfigFile( $os );
+##    4. COPY CONFIG FILE FROM TEMPLATE IF NOT EXISTS
+copyConfigFile( $os );
 
-# ##    5. RUN envars.sh TO SET ~/.envars FILE
-# system( "$Bin/envars.sh" );
+##    5. RUN envars.sh TO SET ~/.envars FILE
+system( "$Bin/envars.sh" );
 
-# ##    6. INSTALL repo
-# installRepo();
+##    6. INSTALL repo
+installRepo();
 
-# ##    7. SOURCE .envar FILES
-# sourceEnvars();
+##    7. SOURCE .envar FILES
+sourceEnvars();
 
 
 #### SUBROUTINES
