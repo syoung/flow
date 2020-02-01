@@ -36,29 +36,36 @@ use FindBin qw($Bin);
 use File::Copy qw(move);
 use File::Path;
 
+my $UBUNTU_VERSION  = "18.04";
+my $CENTOS_VERSION  = "7.7";
+
 #### GET OPERATING SYSTEM
 my $os = $^O;
 
-#### CHANGE TO FOLDER OF THIS FILE
-chdir( $Bin );
+# #### CHANGE TO FOLDER OF THIS FILE
+# chdir( $Bin );
 
-##    1. INSTALL ALL SUBMODULES
-updateSubmodules ();
+# ##    1. INSTALL ALL SUBMODULES
+# updateSubmodules ();
 
 ##    2. CHECKOUT OS-SPECIFIC BRANCH OF perl SUBMODULE
 checkoutPerlBranch( $os );
 
-##    3. COPY DB TEMPLATE IF NOT EXISTS
-copyDbFile();
+# ##    3. COPY DB TEMPLATE IF NOT EXISTS
+# copyDbFile();
 
-##    4. COPY CONFIG FILE FROM TEMPLATE IF NOT EXISTS
-copyConfigFile( $os );
+# ##    4. COPY CONFIG FILE FROM TEMPLATE IF NOT EXISTS
+# copyConfigFile( $os );
 
-##    5. RUN envars.sh TO SET ~/.envars FILE
-system( ". $Bin/envars.sh" );
+# ##    5. RUN envars.sh TO SET ~/.envars FILE
+# system( "$Bin/envars.sh" );
 
-##    6. INSTALL repo
-installRepo();
+# ##    6. INSTALL repo
+# installRepo();
+
+# ##    7. SOURCE .envar FILES
+# sourceEnvars();
+
 
 #### SUBROUTINES
 sub updateSubmodules {
@@ -126,6 +133,19 @@ sub replaceFields {
   my $os       = shift;
   my $contents = shift;
 
+  my $homedir = getHomeDir( $os );
+
+  #### REPLACE FIELDS
+  $contents =~ s/<INSTALLDIR>/$Bin/;
+  $contents =~ s/<HOMEDIR>/$homedir/;
+  print "FINAL CONTENTS: $contents\n";
+
+  return $contents;
+}
+
+sub getHomeDir {
+  my $os = shift;
+
   my $homedir = "/home";
   if ( $os eq "MSWin32" ) {
     $homedir = "C:\Users";
@@ -134,12 +154,7 @@ sub replaceFields {
     $homedir = "/Users"
   }
 
-  #### REPLACE FIELDS
-  $contents =~ s/<INSTALLDIR>/$Bin/;
-  $contents =~ s/<HOMEDIR>/$homedir/;
-  print "FINAL CONTENTS: $contents\n";
-
-  return $contents;
+  return $homedir;
 }
 
 sub checkoutPerlBranch {
@@ -157,9 +172,9 @@ sub checkoutPerlBranch {
     print "Loading embedded perl branch for Linux:\n";
 
     my $osname=`/usr/bin/perl -V  | grep "archname="`;
-    # print "osname: $osname\n";
-    ($archname) = $osname =~ /archname=(\S+)/;
-    # print "archname: $archname\n";
+    print "osname: $osname\n";
+    ($archname) = $osname =~ /archname=([^\-]+)/;
+    print "archname: $archname\n";
 
     if ( -f "/etc/lsb-release" ) {
       print "Getting Ubuntu version...\n";
@@ -167,6 +182,11 @@ sub checkoutPerlBranch {
       $version =~ s/DISTRIB_RELEASE=//;
       $version =~ s/\s+//;
       # print "version: $version\n";
+      if ( $version > $UBUNTU_VERSION ) {
+        print "VERSION $version IS GREATER THAN MAX SUPPORTED UBUNTU VERSION $UBUNTU_VERSION. USING VERSION: $UBUNTU_VERSION\n";
+        $version = $UBUNTU_VERSION;
+      } 
+      # print "FINAL version: $version\n";
       $branch = "ubuntu$version";
       $branch =~ s/\.//g;
       # print "Branch: $branch\n";
@@ -179,7 +199,14 @@ sub checkoutPerlBranch {
       $version =~ s/\s+\(Core\)\s*$//;
       $version =~ s/\.\d+$//;
       $version =~ s/\s+//;
+
       # print "version: $version\n";
+      if ( $version > $UBUNTU_VERSION ) {
+        print "VERSION $version IS GREATER THAN MAX SUPPORTED CENTOS VERSION $CENTOS_VERSION\n";
+        $version = $CENTOS_VERSION;
+      } 
+      print "FINAL version: $version\n";
+
       $branch = "centos$version";
       $branch =~ s/\.//g;
       # print "Branch: $branch\n";
@@ -219,4 +246,37 @@ sub installRepo {
   }
 }
 
+sub sourceEnvars {
+  print "To add the environment variables, source your ~/.bashrc file:\n";
+  print " . ~/.bashrc\n";
+  print "Or source the .envars files directly:\n";
 
+  my $files = [
+    "$Bin/.envars",
+    "$Bin/apps/repo/latest/.envars"
+  ];
+
+  foreach my $file ( @$files ) {
+    if ( -f $file ) {
+      print ". $file\n";
+    }
+  }
+}
+
+sub sourceFile {
+  my $file = shift;
+
+  my $contents = getFileContents( $file );
+  # print "sourceFile    contents: $contents\n";
+  my @lines = split "\n", $contents;
+  foreach my $line ( @lines ) {
+    # print "line: $line\n";
+    if ( $line =~ /^\s*export\s+([^=]+)=(.+)$/ ) {
+      my $envar = $1;
+      my $value = $2;
+      # print "SETTING \$Env{$envar}=$value\n";
+      $Env{$envar}=$value;
+      print "SET ENVAR $envar: $Env{$envar}\n"
+    }
+  }
+}
