@@ -32,15 +32,28 @@
 ##    5. RUN envars.sh TO SET ~/.envars FILE
 ##    6. INSTALL repo
 
-use FindBin qw($Bin);
+# use FindBin qw($Bin);
 use File::Copy qw(move);
+# use File::Spec::Functions qw( rel2abs );
+# use lib rel2abs( dirname(__FILE__) );
+
 use File::Path;
+use File::Basename qw( dirname );
+use Cwd qw( abs_path );
+
+# print "dirname(__FILE__): ", dirname( __FILE__ ), "\n";
+# print "$_\n" for @INC;
+# print "abs_path( $0 ): ", abs_path( $0 ), "\n";
+my $INSTALLDIR = dirname(abs_path( $0 ));
+print "INSTALLDIR: $INSTALLDIR\n";
+# print " dirname(abs_path( $0 )): ", dirname(abs_path( $0 )), "\n";
+use lib dirname(abs_path($0));
 
 #### GET OPERATING SYSTEM
 my $os = $^O;
 
 #### CHANGE TO FOLDER OF THIS FILE
-chdir( $Bin );
+chdir( $INSTALLDIR );
 
 ##    1. INSTALL ALL SUBMODULES
 updateSubmodules ();
@@ -55,7 +68,7 @@ copyDbFile();
 copyConfigFile( $os );
 
 ##    5. RUN envars.sh TO SET ~/.envars FILE
-system( ". $Bin/envars.sh" );
+system( "$INSTALLDIR/envars.sh" );
 
 ##    6. INSTALL repo
 installRepo();
@@ -73,8 +86,8 @@ sub updateSubmodules {
 }
 
 sub copyDbFile {
-  my $dbtemplate = "$Bin/db/db.sqlite.template";
-  my $dbfile = "$Bin/db/db.sqlite";
+  my $dbtemplate = "$INSTALLDIR/db/db.sqlite.template";
+  my $dbfile = "$INSTALLDIR/db/db.sqlite";
   if ( -f $dbfile ) {
     print "\nSkipping copy dbfile as file already exists: $dbfile\n";
   }
@@ -87,8 +100,8 @@ sub copyDbFile {
 sub copyConfigFile {
   my $os     = shift;
 
-  my $configtemplate = "$Bin/conf/config.yml.template";
-  my $configfile = "$Bin/conf/config.yml";
+  my $configtemplate = "$INSTALLDIR/conf/config.yml.template";
+  my $configfile = "$INSTALLDIR/conf/config.yml";
   if ( -f $configfile ) {
     print "\nSkipping copy configfile as file already exists: $configfile\n";
   }
@@ -110,6 +123,8 @@ sub printFile {
 }
 
 sub getFileContents {
+
+
   my $file = shift;
 
   open( INFILE, "<$file" ) or die "Can't open file: $file\n";
@@ -135,7 +150,7 @@ sub replaceFields {
   }
 
   #### REPLACE FIELDS
-  $contents =~ s/<INSTALLDIR>/$Bin/;
+  $contents =~ s/<INSTALLDIR>/$INSTALLDIR/;
   $contents =~ s/<USERDIR>/$userdir/;
   print "FINAL CONTENTS: $contents\n";
 
@@ -197,15 +212,15 @@ sub checkoutPerlBranch {
   if ( $branch and $archname ) {
     print "perl branch: $branch-$archname\n";
 
-    use FindBin qw($Bin);
-    my $command = "cd $Bin/perl; git checkout $branch-$archname";
+    # use FindBin qw($Bin);
+    my $command = "cd $INSTALLDIR/perl; git checkout $branch-$archname";
     print "$command\n";
     `$command`;
   }
 }  
 
 sub installRepo {
-  my $repodir = "$Bin/apps/repo";
+  my $repodir = "$INSTALLDIR/apps/repo";
   if ( -d $repodir ) {
     print "Skipping install repo because directory exists: $repodir\n";
   }
