@@ -34,19 +34,11 @@
 
 # use FindBin qw($Bin);
 use File::Copy qw(move);
-# use File::Spec::Functions qw( rel2abs );
-# use lib rel2abs( dirname(__FILE__) );
-
 use File::Path;
 use File::Basename qw( dirname );
 use Cwd qw( abs_path );
-
-# print "dirname(__FILE__): ", dirname( __FILE__ ), "\n";
-# print "$_\n" for @INC;
-# print "abs_path( $0 ): ", abs_path( $0 ), "\n";
 my $INSTALLDIR = dirname(abs_path( $0 ));
-print "INSTALLDIR: $INSTALLDIR\n";
-# print " dirname(abs_path( $0 )): ", dirname(abs_path( $0 )), "\n";
+#print "INSTALLDIR: $INSTALLDIR\n";
 use lib dirname(abs_path($0));
 
 #### GET OPERATING SYSTEM
@@ -55,25 +47,69 @@ my $os = $^O;
 #### CHANGE TO FOLDER OF THIS FILE
 chdir( $INSTALLDIR );
 
-##    1. INSTALL ALL SUBMODULES
+## 1. INSTALL ALL SUBMODULES
 updateSubmodules ();
 
-##    2. CHECKOUT OS-SPECIFIC BRANCH OF perl SUBMODULE
+## 2. CHECKOUT OS-SPECIFIC BRANCH OF perl SUBMODULE
 checkoutPerlBranch( $os );
 
-##    3. COPY DB TEMPLATE IF NOT EXISTS
+## 3. COPY DB TEMPLATE IF NOT EXISTS
 copyDbFile();
 
-##    4. COPY CONFIG FILE FROM TEMPLATE IF NOT EXISTS
+## 4. COPY CONFIG FILE FROM TEMPLATE IF NOT EXISTS
 copyConfigFile( $os );
 
-##    5. RUN envars.sh TO SET ~/.envars FILE
-system( "$INSTALLDIR/envars.sh" );
+## 5. RUN envars.sh TO SET ~/.envars FILE
+setEnvarsFile( $INSTALLDIR );
 
-##    6. INSTALL repo
+## 6. INSTALL repo
 installRepo();
 
+
 #### SUBROUTINES
+
+sub setEnvarsFile {
+  my $INSTALLDIR = shift;
+
+  my $envarsfile = "$INSTALLDIR/.envars";
+  my $appname = "FLOW";
+  my $appdir = $appname . "_HOME";
+  my $commands = [
+    "#!/bin/bash",
+    "",
+    "export $appdir=$INSTALLDIR",
+    "export PATH=$INSTALLDIR/bin:\$PATH",
+    "export PERL5LIB=$INSTALLDIR/lib:\$PERL5LIB"
+  ];
+  my $contents = join "\n", @$commands;
+  my $perlenvarfile = "$INSTALLDIR/perl/.envars";
+  my $perlenvars    = getFileContents( $perlenvarfile );
+  print "Perlenvars: $perlenvars\n";
+  $contents .= "\n";
+  $contents .= $perlenvars;
+  $contents  =~ s/<INSTALLDIR>/$INSTALLDIR/g;
+
+  print "contents: $contents\n";
+  printFile( $envarsfile, $contents );
+
+  updateBashrc( $envarsfile );
+}
+
+sub updateBashrc {
+  my $envarsfile = shift;
+
+  my $homedir = $ENV{'HOME'};
+  my $bashrcfile = "$homedir/.bashrc";
+  my $contents   = getFileContents( $bashrcfile );
+  if ( $contents !~ /. $envarsfile/smg ) {
+    $contents .= "\n";
+    $contents .= ". $envarsfile";
+    $contents .= "\n";
+  }
+
+  printFile( $bashrcfile, $contents );
+}
+
 sub updateSubmodules {
   print "Updating submodules:\n";
   my $commands = [
