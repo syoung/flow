@@ -116,7 +116,7 @@ my $username = &getUsername(\@ARGV);
 my $subcommand = shift @ARGV;
 print "No subcommand provided (try --help)\n" and exit if not defined $subcommand;
 usage() if $subcommand =~ /^-h$/ or $subcommand =~ /^--help$/;
-usage() if $subcommand !~ /^(list|add|del|delete|load|desc|edit|insert|run|show)/;
+usage() if $subcommand !~ /^(list|add|del|delete|load|desc|edit|insert|run|show|cli)/;
 
 #### GET METHOD
 my $method = $subcommand;
@@ -148,6 +148,10 @@ my $object = Flow::Main->new(
     printlog    =>  $printlog,
     logfile     =>  $logfile
 );
+if ( not $object->can( $method ) ) {
+  print "Subcommand not supported: $method\n";
+  usage();
+}
 $object->getopts();
 $object->$method( @$arguments );
     

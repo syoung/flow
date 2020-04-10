@@ -280,14 +280,81 @@ method desc ( $projectname ) {
 	#### GET OPTS (E.G., WORKFLOW)
 	$self->_getopts();
 
-	#### SET USERNAME AND OWNER
+	my $project = $self->getCleanProject( $projectname );
+	my $output = Dump ( $project );
+	$output = $self->orderOutput( $output );
+
+	print $output;
+}
+
+
+
+method cli ( $projectname ) {
+	$self->logDebug("projectname", $projectname);
+
+	#### GET OPTS (E.G., WORKFLOW)
+	$self->_getopts();
+	
+	my $project = $self->getCleanProject( $projectname );
+	my $output = "\nProject: $projectname\nWorkflows:\n";
+	my $workflows = $project->{workflows};
+	
+	my $workflowindex = 0;
+	foreach my $workflow ( @$workflows ) {
+		$workflowindex++;
+		$self->logDebug( "workflow", $workflow );
+		$output .= "  ";
+		$output .= $workflow->{workflowname};
+		$output .= "\n";
+		$self->logDebug( "output", $output );
+		
+		#### HANDLE PROFILE
+		my $profile = $workflow->{profile};
+		$self->logDebug( "profile", $profile );
+		if ( $profile and $profile ne "" ) {
+			$output .= "  Profile: $workflow->{profile}\n";
+
+		}
+		
+		my $command = "";
+		my $apps = $workflow->{apps};
+		$self->logDebug( "apps", $apps );
+		
+		my $appindex = 0;
+		foreach my $app ( @$apps ) {
+			$appindex++;
+			$command .= "# Stage " . $appindex . "\n";
+
+			my $path = $app->{installdir} . "/" . $app->{location};
+			$self->logDebug( "path", $path );
+			$command .= $path . " ";
+
+			my $parameters = $app->{parameters};
+			foreach my $parameter ( @$parameters ) {
+				if ( $parameter->{argument} ) {
+					$command .= $parameter->{argument} . " ";
+				}
+				if ( $parameter->{value} ) {
+					$command .= $parameter->{value} . " ";
+				}
+			}
+			$command .= "\n";
+		}
+		$command =~ s/\n/\n    /g;
+
+		$output .= "    " . $command;
+	}
+
+	$output .= "\n";
+
+	print $output; 
+}
+
+method getCleanProject ( $projectname ) {
+
+	#### SET USERNAME
 	my $username    =   $self->setUsername();
 	print "username not defined\n" and exit if not defined $username;
-
-	my $data = {
-		username 	=> $username,
-		projectname => $projectname
-	};
 
 	my $project = $self->table()->getProject( $username, $projectname );
 	$self->logDebug("project", $project);
@@ -336,19 +403,12 @@ method desc ( $projectname ) {
 	$project = $$projects[ 0 ];
 		
 	$project->{workflows} = $workflows;
-	my $output = Dump ( $project );
-	# $self->logDebug("output", $output);
 
-	$output = $self->orderOutput( $output );
-
-	print $output;
+	return $project;	
 }
 
 method orderOutput ( $output ) {
 	# $self->logDebug( "output", $output );
-	# my ( $head, $workflows ) = $output =~ /(^---.+\n)(workflows:.+)/msg;
-	# $self->logDebug( "head", $head );
-	# $self->logDebug( "workflows", $workflows );
 
 	my ( $head, $tail ) = $output =~ /(^---.+\n)(  - apps:.+)/msg;
 	$self->logDebug( "head", $head );
@@ -860,6 +920,7 @@ method getOptions ( $argv, $arguments ) {
 method getProfileYaml ( $file, $profilename ) {
 	$self->logDebug( "file", $file );
 	$self->logDebug( "profilename", $profilename );
+	return undef if not $file or not $profilename;
 
 	my $yaml = YAML::Tiny->read( $file );
 	my $data = $$yaml[0];
@@ -904,9 +965,6 @@ method addWorkflow ( $projectname, $wkfile ) {
 	my $profilefile = $options->{profiles};
 	$self->logDebug( "profilefile", $profilefile );
 
-# $self->logDebug( "DEBUG EXIT" ) and exit;
-
-
 	#### SET USERNAME AND OWNER
 	my $username    =   $self->setUsername();
 	my $owner       =   $username;
@@ -931,9 +989,9 @@ method addWorkflow ( $projectname, $wkfile ) {
 	my $workflow = Flow::Workflow->new(
 		projectname =>  $projectname,
 		username    =>  $self->username(),
-    	number      =>  $workflownumber,
-  		inputfile   =>  $wkfile,
-		log     	=>  $self->log(),
+  	number      =>  $workflownumber,
+		inputfile   =>  $wkfile,
+		log     	  =>  $self->log(),
 		printlog    =>  $self->printlog(),
 		conf        =>  $self->conf(),
 		db          =>  $self->table()->db()
