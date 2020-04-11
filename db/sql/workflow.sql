@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS workflow
   description    TEXT DEFAULT '',
   notes          TEXT DEFAULT '',
   provenance     TEXT DEFAULT '',
-  profile        TEXT DEFAULT '',
+  profiles       TEXT DEFAULT '',
 
   PRIMARY KEY  (username, projectname, workflowname, workflownumber)
 );

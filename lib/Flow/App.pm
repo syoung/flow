@@ -16,86 +16,89 @@ class Flow::App with (Util::Logger,
     use Flow::Parameter;
 
     #### Int
-    has 'log'		=> ( isa => 'Int', is => 'rw', default 	=> 	2 	);  
-    has 'printlog'	=> ( isa => 'Int', is => 'rw', default 	=> 	5 	);
-    has 'appnumber' => ( isa => 'Int|Undef', is => 'rw', required => 0 );
-    has 'ordinal'   => ( isa => 'Int|Undef', is => 'rw', default => undef, required => 0, documentation => q{Set order of appearance: 1, 2, ..., N} );
-    has 'indent'    => ( isa => 'Int', is => 'ro', default => 15);
+    has 'log'		    => ( isa => 'Int', is => 'rw', default 	=> 	2 	);  
+    has 'printlog'	    => ( isa => 'Int', is => 'rw', default 	=> 	5 	);
+    has 'appnumber'     => ( isa => 'Int|Undef', is => 'rw', required => 0 );
+    has 'ordinal'       => ( isa => 'Int|Undef', is => 'rw', default => undef, required => 0, documentation => q{Set order of appearance: 1, 2, ..., N} );
+    has 'indent'        => ( isa => 'Int', is => 'ro', default => 15);
     has 'epochstarted'  => ( isa => 'Int|Undef', is => 'rw', default => undef );
     has 'epochstopped'  => ( isa => 'Int|Undef', is => 'rw', default => undef );
     has 'epochduration' => ( isa => 'Int|Undef', is => 'rw', default => undef );
     
     #### Bool
-    has 'localonly'	=> ( isa => 'Bool|Undef', is => 'rw', default    => undef, documentation => q{Set to 1 if application should only be run locally, i.e., not executed on the cluster} );
+    has 'localonly'	    => ( isa => 'Bool|Undef', is => 'rw', default    => undef, documentation => q{Set to 1 if application should only be run locally, i.e., not executed on the cluster} );
 
     #### Maybe    
-    has 'submit'    => ( isa => 'Maybe',     is => 'rw', default => undef );
+    has 'submit'        => ( isa => 'Maybe',     is => 'rw', default => undef );
     has 'epochqueued'   => ( isa => 'Maybe',     is => 'rw', default => undef );
 
     #### Str
+    has 'profilename'   => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
+    has 'profile'       => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
+    has 'prescript'     => ( isa => 'Str|Undef', is => 'rw', default => undef );
     has 'stagepid'      => ( isa => 'Str|Undef', is => 'rw', default => undef );
     has 'stagejobid'    => ( isa => 'Str|Undef', is => 'rw', default => undef );
     has 'workflowpid'   => ( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'profile'   => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
-    has 'envfile'   => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
-    has 'logfile'   => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
-    has 'owner'	    => ( isa => 'Str|Undef', is => 'rw', required => 0, default =>  undef );
+    has 'prescript'     => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
+    has 'envfile'       => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
+    has 'logfile'       => ( isa => 'Str|Undef', is => 'rw', required   =>  0   );
+    has 'owner'	        => ( isa => 'Str|Undef', is => 'rw', required => 0, default =>  undef );    
     has 'packagename'	=> ( isa => 'Str|Undef', is => 'rw', required => 0 );
-    has 'version'	=> ( isa => 'Str|Undef', is => 'rw', required => 0 );
-    has 'installdir'=> ( isa => 'Str|Undef', is => 'rw', required => 0 );
+    has 'version'	    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+    has 'installdir'    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
     has 'appname'	    => ( isa => 'Str|Undef', is => 'rw', required => 0, documentation => q{Name of this object} );
     has 'apptype'	    => ( isa => 'Str|Undef', is => 'rw', required => 0, documentation => q{User-defined application type} );
-    has 'url'	    => ( isa => 'Str|Undef', is => 'rw', required => 0, documentation => q{URL of application website} );
-    has 'linkurl'	=> ( isa => 'Str|Undef', is => 'rw', required => 0, documentation => q{URL for application usage information (e.g., man pages, help)} );
-    has 'location'	=> ( isa => 'Str|Undef', is => 'rw', required => 0 );
-    has 'executor'	=> ( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'envarfile'	=> ( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'description'=>( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'notes'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'scrapefile'=> ( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'usagefile'	=> ( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'stdoutfile'=> ( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'stderrfile'=> ( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'url'	        => ( isa => 'Str|Undef', is => 'rw', required => 0, documentation => q{URL of application website} );
+    has 'linkurl'	    => ( isa => 'Str|Undef', is => 'rw', required => 0, documentation => q{URL for application usage information (e.g., man pages, help)} );
+    has 'location'	    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+    has 'executor'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'envarfile'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'description'   =>( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'notes'	        => ( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'scrapefile'    => ( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'usagefile'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'stdoutfile'    => ( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'stderrfile'    => ( isa => 'Str|Undef', is => 'rw', default => undef );
     
     #### STORED STATUS VARIABLES
-    has 'status'	=> ( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'locked'	=> ( isa => 'Int|Undef', is => 'rw', default => undef );
-    has 'queued'	=> ( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'started'	=> ( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'completed'	=> ( isa => 'Str|Undef', is => 'rw', default => undef );
-    has 'duration'	=> ( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'status'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'locked'	    => ( isa => 'Int|Undef', is => 'rw', default => undef );
+    has 'queued'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'started'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'completed'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
+    has 'duration'	    => ( isa => 'Str|Undef', is => 'rw', default => undef );
     # TRANSIENT VARIABLES
     #has 'args'	    => ( isa => 'ArrayRef[Str|Int]', is => 'rw', required => 0 );
-    has 'format'    => ( isa => 'Str', is => 'rw', default => "yaml");
-    has 'newname'	=> ( isa => 'Str', is => 'rw', required => 0 );
-    has 'paramname'	=> ( isa => 'Str', is => 'rw', required => 0 );
-    has 'argument'	=> ( isa => 'Str', is => 'rw', required => 0 );
-    has 'field'	    => ( isa => 'Str', is => 'rw', required => 0 );
-    has 'value'	    => ( isa => 'Str', is => 'rw', required => 0 );
+    has 'format'        => ( isa => 'Str', is => 'rw', default => "yaml");
+    has 'newname'	    => ( isa => 'Str', is => 'rw', required => 0 );
+    has 'paramname'	    => ( isa => 'Str', is => 'rw', required => 0 );
+    has 'argument'	    => ( isa => 'Str', is => 'rw', required => 0 );
+    has 'field'	        => ( isa => 'Str', is => 'rw', required => 0 );
+    has 'value'	        => ( isa => 'Str', is => 'rw', required => 0 );
 
-    has 'inputfile' => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
-    has 'appfile'   => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
-    has 'cmdfile'   => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
-    has 'outputfile'=> ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
-    has 'outputdir' => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
-    has 'dbfile'    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
-    has 'dbtype'    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
-    has 'database'  => ( isa => 'Str|Undef', is => 'rw', required => 0 );
-    has 'user'      => ( isa => 'Str|Undef', is => 'rw', required => 0 );
-    has 'password'  => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+    has 'inputfile'     => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
+    has 'appfile'       => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
+    has 'cmdfile'       => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
+    has 'outputfile'    => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
+    has 'outputdir'     => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
+    has 'dbfile'        => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+    has 'dbtype'        => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+    has 'database'      => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+    has 'user'          => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+    has 'password'      => ( isa => 'Str|Undef', is => 'rw', required => 0 );
 
     #### Obj
-    has 'parameters'=> ( isa => 'ArrayRef[Flow::Parameter]', is => 'rw', default => sub { [] } );
-    has 'fields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { ['appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'url', 'linkurl', 'status', 'submit', 'appfile', 'field', 'value', 'cmdfile', 'inputfile', 'outputfile', 'paramname', 'scrapefile', 'stdoutfile', 'stderrfile', 'queued', 'started', 'completed', 'duration', 'stagepid', 'stagejobid', 'workflowpid', 'log', 'printlog', 'app', 'argument', 'format'] } );
-    has 'savefields' => ( isa => 'ArrayRef[Str]', is => 'rw', default => sub { ['appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'status', 'queued', 'started', 'completed', 'duration', 'locked', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'submit', 'url', 'linkurl', 'localonly', 'stdoutfile', 'stderrfile', 'stagepid', 'stagejobid', 'workflowpid'] } );
-    has 'exportfields' => ( isa => 'ArrayRef[Str]', is => 'rw', default => sub { ['appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'status', 'submit', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'url', 'linkurl', 'localonly', 'stdoutfile', 'stderrfile', 'queued', 'started', 'completed', 'duration', 'stagepid', 'stagejobid', 'workflowpid'] } );
-    has 'appfields' => ( isa => 'ArrayRef[Str]', is => 'rw', default => sub { ['appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'url', 'linkurl', 'localonly'] } );
-    has 'force'     => ( isa => 'Maybe', 	 is => 'rw', required => 0 );
-    has 'logfh'     => ( isa => 'FileHandle',is => 'rw', required => 0 );
+    has 'parameters'    => ( isa => 'ArrayRef[Flow::Parameter]', is => 'rw', default => sub { [] } );
+    has 'fields'        => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'profilename', 'profile', 'prescript', 'appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'url', 'linkurl', 'status', 'submit', 'appfile', 'field', 'value', 'cmdfile', 'inputfile', 'outputfile', 'paramname', 'scrapefile', 'stdoutfile', 'stderrfile', 'queued', 'started', 'completed', 'duration', 'stagepid', 'stagejobid', 'workflowpid', 'log', 'printlog', 'app', 'argument', 'format'] } );
+    has 'savefields'    => ( isa => 'ArrayRef[Str]', is => 'rw', default => sub { [ 'profilename', 'profile', 'prescript', 'appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'status', 'queued', 'started', 'completed', 'duration', 'locked', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'submit', 'url', 'linkurl', 'localonly', 'stdoutfile', 'stderrfile', 'stagepid', 'stagejobid', 'workflowpid'] } );
+    has 'exportfields'  => ( isa => 'ArrayRef[Str]', is => 'rw', default => sub { [ 'profilename', 'profile', 'prescript', 'appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'status', 'submit', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'url', 'linkurl', 'localonly', 'stdoutfile', 'stderrfile', 'queued', 'started', 'completed', 'duration', 'stagepid', 'stagejobid', 'workflowpid'] } );
+    has 'appfields'     => ( isa => 'ArrayRef[Str]', is => 'rw', default => sub { [ 'prescript', 'appname', 'appnumber', 'owner', 'packagename', 'version', 'installdir', 'apptype', 'location', 'executor', 'envarfile', 'description', 'notes', 'url', 'linkurl', 'localonly'] } );
+    has 'force'         => ( isa => 'Maybe', 	 is => 'rw', required => 0 );
+    has 'logfh'         => ( isa => 'FileHandle',is => 'rw', required => 0 );
 
 	#### OBJECTS
-    has 'args'		=> ( isa => 'HashRef|Undef', is => 'rw', default => sub { return {}; } );
-    has 'conf' 	=> (
+    has 'args'		    => ( isa => 'HashRef|Undef', is => 'rw', default => sub { return {}; } );
+    has 'conf' 	        => (
 		is 		=>	'rw',
 		isa 	=> 	'Conf::Yaml',
 		lazy	=>	1,

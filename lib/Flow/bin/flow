@@ -16,13 +16,13 @@ USAGE: flow <subcommand> [switch] [Options] [--help]
 
 =over 2
 
-    list            List all projects and contained workflows
-    addproject      Add a new project
-    deleteproject   Delete a project
-    addworkflow     Add a workflow to an existing project
-    deleteworkflow  Delete a workflow from a project
-    addapp          Add an application to a workflow in an existing project
-    deleteapp       Delete an application from a workflow
+    list                 List all projects and contained workflows
+    addproject|addp      Add a new project
+    deleteproject|delp   Delete a project
+    addworkflow|addw     Add a workflow to an existing project
+    deleteworkflow|delw  Delete a workflow from a project
+    addapp|adda          Add an application to a workflow in an existing project
+    deleteapp|dela       Delete an application from a workflow
 
 =back
 
@@ -99,7 +99,7 @@ my $configfile  =   "$installdir/conf/config.yml";
 my $logfile  =   "$installdir/log/flow.log";
 my $conf = Conf::Yaml->new(
     memory      =>  1,
-    inputfile	=>	$configfile,
+    inputfile	  =>	$configfile,
     log         =>  $log,
     printlog    =>  $printlog,
     logfile     =>  $logfile
@@ -122,6 +122,8 @@ usage() if $subcommand !~ /^(list|add|del|delete|load|desc|edit|insert|run|show|
 my $method = $subcommand;
 
 #### SHORTCUTS
+$method = "describe" if $subcommand eq "desc";
+
 $subcommand = "addproject" if $subcommand eq "addp";
 $subcommand = "runproject" if $subcommand eq "runp";
 $subcommand = "deleteproject" if $subcommand eq "delp";

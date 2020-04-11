@@ -133,9 +133,9 @@ method setInstallDir ($username, $owner, $package, $type) {
 
 	return $self->installdir() if defined $self->installdir();
 	
-	my $userdir = $self->conf()->getKey("core:USERDIR");
+	my $homedir = $self->conf()->getKey("core:HOMEDIR");
 
-	return "$userdir/$username/.repos/$type/$package/$owner";
+	return "$homedir/$username/.repos/$type/$package/$owner";
 }
 
 #### WORKFLOWS

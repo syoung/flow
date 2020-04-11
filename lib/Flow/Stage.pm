@@ -17,6 +17,9 @@ class Stage extends App {
     #enum 'RGB' => qw( red green blue );
 
     ##### STORED VARIABLES
+    has 'profilename'=> ( isa => 'Str|Undef', is => 'rw', required => 0 );
+    has 'profile'   => ( isa => 'Str|Undef', is => 'rw', required => 0 );
+    has 'owner'     => ( isa => 'Str|Undef', is => 'rw', required => 0, default => 'anonymous' );
     has 'owner'	    => ( isa => 'Str|Undef', is => 'rw', required => 0, default => 'anonymous' );
     has 'name'	    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
     has 'number'	=> ( isa => 'Str|Undef', is => 'rw', required => 0 );
@@ -46,9 +49,6 @@ class Stage extends App {
     has 'user'      => ( isa => 'Str|Undef', is => 'rw', required => 0 );
     has 'password'  => ( isa => 'Str|Undef', is => 'rw', required => 0 );
     has 'force'     => ( isa => 'Maybe', is => 'rw', required => 0 );
-    #has 'db'  => ( isa => 'DBase::SQLite|DBase::MySQL', is => 'rw' );
-
-####//}}
     
 method BUILD ($hash) { 
     print "Stage::BUILD    Stage::BUILD()\n";    
