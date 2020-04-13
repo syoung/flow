@@ -1186,7 +1186,7 @@ method fromHash ($hash) {
 
     foreach my $field ( keys %$hash ) {
         my $value = $hash->{$field};
-        $self->logDebug("field $field value", $value);
+        $self->logDebug("field $field", $value);
         next if ref($self->$field) eq "ARRAY";
         
         my $attr = $meta->get_attribute($field);

@@ -27,6 +27,7 @@ use Flow::App;
 use Flow::Parameter;
 use DBase::Factory;
 use Table::Main;
+use Virtual::Factory;
 
 #### Int
 has 'workflowpid'  =>   ( isa => 'Int|Undef', is => 'rw', required => 0 );
@@ -126,6 +127,37 @@ has 'util'    =>  (
   lazy    =>  1,
   builder  =>  "setUtil"
 );
+
+has 'virtual'		=> 	( 
+	isa     => 'Any', 
+	is      => 'rw', 
+	lazy	  =>	1, 
+	builder	=>	"setVirtual" 
+);
+
+#### SET VIRTUALISATION PLATFORM
+method setVirtual {
+	my $virtualtype		=	$self->conf()->getKey("agua", "VIRTUALTYPE");
+	$self->logDebug("virtualtype", $virtualtype);
+
+	#### RETURN IF TYPE NOT SUPPORTED	
+	$self->logDebug("virtualtype not supported: $virtualtype") and return if $virtualtype !~	/^(openstack|vagrant)$/;
+
+   #### CREATE DB OBJECT USING DBASE FACTORY
+    my $virtual = Virtual->new( $virtualtype,
+        {
+			conf		=>	$self->conf(),
+            username	=>  $self->username(),
+			
+			logfile		=>	$self->logfile(),
+			log			=>	$self->log(),
+			printlog	=>	$self->printlog()
+        }
+    ) or die "Can't create virtualtype: $virtualtype. $!\n";
+	$self->logDebug("virtual: $virtual");
+
+	$self->virtual($virtual);
+}
 
 method setUtil () {
   my $util = Util::Main->new({
@@ -294,12 +326,16 @@ WHERE username='$username'};
 }
 
 method describeUsage () {
-	return "\nUSAGE: flow (desc|describe) <projectname> [workflowname/workflownumber]\n\n"; 
+	return "\nUSAGE: flow (desc|describe) <projectname> [workflowname/workflownumber]\n\n";
 }
 
 method describe ( $projectname = undef, $workflowid = undef ) {
 	$self->logDebug("projectname", $projectname);
 	$self->logDebug("workflowid", $workflowid);
+
+	#### SET USERNAME AND OWNER
+	my $username    =   $self->setUsername();
+	print "username not defined\n" and exit if not defined $username;
 
 	#### CHECK INPUTS
 	if ( not defined $projectname ) {
@@ -308,15 +344,24 @@ method describe ( $projectname = undef, $workflowid = undef ) {
 		exit ;
 	}
 
-<<<<<<< HEAD
+	#### GET WORKFLOW NAME IF workflownumber PROVIDED
+	my $workflowname   = $workflowid;
+	if ( $workflowname ) {
+		if ( $workflowid =~ /^\d+$/ ) {
+			my $workflownumber = $workflowid;
+			$workflowname = $self->table()->getWorkflowByNumber( $username, $projectname, $workflownumber );
+		}		
+	}
+	$self->logDebug("workflowname", $workflowname);
+
+	#### GET OPTS (E.G., WORKFLOW)
+	$self->_getopts();
+
 	my $project = $self->getCleanProject( $projectname );
-	my $output = Dump ( $project );
-	$output = $self->orderOutput( $output );
+	my $output = $self->orderOutput( $project );
 
 	print $output;
 }
-
-
 
 method cli ( $projectname ) {
 	$self->logDebug("projectname", $projectname);
@@ -325,15 +370,17 @@ method cli ( $projectname ) {
 	$self->_getopts();
 	
 	my $project = $self->getCleanProject( $projectname );
-	my $output = "\nProject: $projectname\nWorkflows:\n";
+	my $output = "\n# Project: $projectname\n";
 	my $workflows = $project->{workflows};
 	
 	my $workflowindex = 0;
 	foreach my $workflow ( @$workflows ) {
 		$workflowindex++;
+		my $workflowname = $workflow->{workflowname};
+
 		$self->logDebug( "workflow", $workflow );
-		$output .= "  ";
-		$output .= $workflow->{workflowname};
+		$output .= "  # Workflow $workflowindex: ";
+		$output .= $workflowname;
 		$output .= "\n";
 		$self->logDebug( "output", $output );
 		
@@ -342,7 +389,6 @@ method cli ( $projectname ) {
 		$self->logDebug( "profile", $profile );
 		if ( $profile and $profile ne "" ) {
 			$output .= "  Profile: $workflow->{profile}\n";
-
 		}
 		
 		my $command = "";
@@ -357,15 +403,23 @@ method cli ( $projectname ) {
 			my $path = $app->{installdir} . "/" . $app->{location};
 			$self->logDebug( "path", $path );
 			$command .= $path . " ";
+			my $profiledata = $app->{ profile };
+			$self->logDebug( "profiledata", $profiledata );
 
 			my $parameters = $app->{parameters};
 			foreach my $parameter ( @$parameters ) {
+				$self->logDebug( "parameter", $parameter );
 				if ( $parameter->{argument} ) {
 					$command .= $parameter->{argument} . " ";
 				}
-				if ( $parameter->{value} ) {
-					$command .= $parameter->{value} . " ";
+
+				my $value = $parameter->{ value };
+				if ( defined $value ) {
+					$value = $self->replaceString( $profiledata, $value ); 
+					$value = $self->replaceWorkflowTags( $projectname, $workflowname, $value );
+					$command .= $value . " ";
 				}
+
 			}
 			$command .= "\n";
 		}
@@ -376,68 +430,53 @@ method cli ( $projectname ) {
 
 	$output .= "\n";
 
-	print $output; 
+	print $output;
+}
+
+method replaceWorkflowTags ( $projectname, $workflowname, $string  ) {
+    $string    =~    s/<PROJECT>/$projectname/g;
+    $string    =~    s/<WORKFLOW>/$workflowname/g;
+
+    return $string;
 }
 
 method getCleanProject ( $projectname ) {
 
 	#### SET USERNAME
-=======
-	#### REMOVE PROJECT FROM ALL DATABASE TABLES
->>>>>>> ced0d3f577b25b0c114a0483df4dd3d947c2e828
 	my $username    =   $self->setUsername();
 	my $owner       =   $username;
 	print "username not defined\n" and exit if not defined $username;
 
-<<<<<<< HEAD
-=======
-	#### GET WORKFLOW NAME IF workflownumber PROVIDED
-	my $workflowname   = $workflowid;
-	if ( $workflowname ) {
-		if ( $workflowid =~ /^\d+$/ ) {
-			my $workflownumber = $workflowid;
-			$workflowname = $self->table()->getWorkflowByNumber( $username, $projectname, $workflownumber );
-		}		
-	}
-	$self->logDebug("workflowname", $workflowname);
-
-	#### GET OPTS (E.G., WORKFLOW)
-	$self->_getopts();
-
-	my $data = {
-		username 	=> $username,
-		projectname => $projectname
-	};
-
->>>>>>> ced0d3f577b25b0c114a0483df4dd3d947c2e828
 	my $project = $self->table()->getProject( $username, $projectname );
 	$self->logDebug("project", $project);
 	print "Can't find project: $projectname\n" and exit if not %$project;
 
 	my $workflows = $self->table()->getWorkflowsByProject( $project );
 	foreach my $workflow ( @$workflows ) {
-		if ( $workflowname ) {
-			next if $workflowname ne $workflow->{workflowname};
-		}
 
 		my $apps = $self->table()->getStagesByWorkflow( $workflow );
 		foreach my $app ( @$apps ) {
 			$self->logDebug("app", $app);
+
 			my $apps = $self->removeEmpty( [ $app ] );
 			$app = $$apps[ 0 ];
 			my $parameters = $self->table()->getParametersByStage( $app );
 			# $self->logDebug("parameters", $parameters);
 
 			$parameters = $self->removeEmpty( $parameters );
-			$parameters = $self->removeHigher( $app, $parameters );
-			$parameters = $self->orderByNumber( $parameters, "paramnumber" );
+			$self->logDebug("BEFORE removeParent    parameters", $parameters);
+			$parameters = $self->removeParent( $app, $parameters );
+			$self->logDebug("AFTER removeParent    parameters", $parameters, 1);
+			# $parameters = $self->orderByNumber( $parameters, "paramnumber" );
+			# $self->logDebug("AFTER orderByNumber    parameters", $parameters, 1);
 
+			#### REMOVE OWNER
 			my $paramfields = {
 				"owner" => 1,
 				"paramnumber" => 1,
 				# "ordinal" => 1
 			};
-			$parameters = $self->removeHigher( $paramfields, $parameters );
+			$parameters = $self->removeParent( $paramfields, $parameters );
 			$self->logDebug("FINAL parameters", $parameters);
 
 			my $appfields = {
@@ -446,7 +485,7 @@ method getCleanProject ( $projectname ) {
 				"workflowname" => 1,
 				"workflownumber" => 1,
 			};
-			$app = $self->removeHigherEntry( $appfields, $app );
+			$app = $self->removeParentField( $appfields, $app );
 
 			$app->{parameters} = $parameters;
 		}
@@ -454,31 +493,20 @@ method getCleanProject ( $projectname ) {
 		$workflow->{apps} = $apps;
 	}
 
-	$workflows = $self->removeHigher( $project, $workflows );
+	$workflows = $self->removeParent( $project, $workflows );
 	$workflows = $self->removeEmpty( $workflows );
 
 	my $projects = $self->removeEmpty( [ $project ] );
 	$project = $$projects[ 0 ];
 		
 	$project->{workflows} = $workflows;
-<<<<<<< HEAD
 
 	return $project;	
 }
 
-method orderOutput ( $output ) {
-	# $self->logDebug( "output", $output );
-=======
-	# $self->logDebug( "project", $project );
-	# my $output = Dump ( $project );
-	# $self->logDebug("output", $output);
 
-	my $output = $self->orderedOutput( $project );
 
-	print $output;
-}
-
-method orderedOutput ( $project ) {
+method orderOutput ( $project ) {
 	$self->logDebug( "project", $project );
 	my $output = "";
 
@@ -487,7 +515,6 @@ method orderedOutput ( $project ) {
 	$self->logDebug( "workflows", $workflows );
 	$output .= YAML::Tiny::Dump $project;
 	$output =~ s/^\-+\n//;
->>>>>>> ced0d3f577b25b0c114a0483df4dd3d947c2e828
 
 	#### WORKFLOWS
 	$output .= "workflows:\n";			
@@ -588,17 +615,21 @@ method padRows( $text, $padding ) {
 	return join "\n", @lines;
 }
 
-method removeHigher ( $higher, $array ) {
+method removeParent ( $higher, $array ) {
 	$self->logNote( "higher", $higher );
 	$self->logNote( "array", $array );
-	foreach my $entry ( @$array ) {
-		$entry = $self->removeHigherEntry( $higher, $entry );
+	for ( my $i = 0; $i < scalar( @$array ); $i++ ) {
+		my $entry = $$array[ $i ];
+		$self->logNote( "entry", $entry );
+		$$array[ $i ] = $self->removeParentField( $higher, $entry );
 	}
+
+	$self->logDebug( "RETURNING array", $array );
 
 	return $array;
 }
 
-method removeHigherEntry ( $higher, $hash ) {
+method removeParentField ( $higher, $hash ) {
 		
 	foreach my $key ( keys %$higher ) {
 		$self->logNote( "key '$key'", $hash->{$key} );
@@ -625,6 +656,8 @@ method removeEmpty ( $array ) {
 }
 
 method orderByNumber( $hasharray, $key ) {
+#### TO DO: REMOVE
+
 	# print "******************* hasharray: " . $hasharray . "\n";
 	# print "******************* key: " . $key . "\n";
 	# # $self->logDebug( "hasharray", $hasharray );
@@ -750,7 +783,7 @@ AND projectname='$project'");
 
   $hash->{conf} = $self->conf();
   $hash->{field} = $field;
-  $hash->{value} = $value;
+  $hash->{ value } = $value;
 
 	#### LOAD INTO DATABASE
 	my $projectobject		=	Flow::Project->new( $hash );
@@ -1083,18 +1116,6 @@ method getOptions ( $argv, $arguments ) {
   return $options;
 }
 
-<<<<<<< HEAD
-method getProfileYaml ( $file, $profilename ) {
-	$self->logDebug( "file", $file );
-	$self->logDebug( "profilename", $profilename );
-	return undef if not $file or not $profilename;
-
-	my $yaml = YAML::Tiny->read( $file );
-	my $data = $$yaml[0];
-	# $self->logDebug( "data", $data );
-=======
->>>>>>> ced0d3f577b25b0c114a0483df4dd3d947c2e828
-
 method getProfileYaml ( $profiles, $profilename ) {
 	$self->logDebug( "profilename", $profilename );
 
@@ -1134,14 +1155,6 @@ method addWorkflow ( $projectname, $wkfile ) {
 	my $profilefile = $options->{profiles};
 	$self->logDebug( "profilefile", $profilefile );
 
-<<<<<<< HEAD
-	#### SET USERNAME AND OWNER
-	my $username    =   $self->setUsername();
-	my $owner       =   $username;
-	$self->logDebug("username", $username);
-
-=======
->>>>>>> ced0d3f577b25b0c114a0483df4dd3d947c2e828
 	my $projecthash	=	$self->_getProjectHash($username, $projectname);
 	$self->logDebug("projecthash", $projecthash);
 	print "Can't find project: $projectname (username: $username)\n" and exit if not defined $projecthash;
@@ -1161,15 +1174,9 @@ method addWorkflow ( $projectname, $wkfile ) {
 	my $workflow = Flow::Workflow->new(
 		projectname =>  $projectname,
 		username    =>  $self->username(),
-<<<<<<< HEAD
   	number      =>  $workflownumber,
 		inputfile   =>  $wkfile,
 		log     	  =>  $self->log(),
-=======
-    number      =>  $workflownumber,
-  	inputfile   =>  $wkfile,
-		log     	=>  $self->log(),
->>>>>>> ced0d3f577b25b0c114a0483df4dd3d947c2e828
 		printlog    =>  $self->printlog(),
 		conf        =>  $self->conf(),
 		db          =>  $self->table()->db()
@@ -1232,7 +1239,10 @@ method addWorkflow ( $projectname, $wkfile ) {
 	my $success = $workflow->save();
 
 	if ( $success ) {
-		print "Added workflow '$workflowname' at number $workflownumber in project '$projectname' for user '$username'\n";
+		print "\nAdded workflow '$workflowname' at number $workflownumber in project '$projectname' for user '$username'\n\n";
+	}
+	else {
+		print "\n*** ERROR *** Failed to add workflow '$workflowname' to project '$projectname'\n\n";
 	}
 }
 
@@ -1559,8 +1569,6 @@ method stageFactory ( $stage ) {
   # $monitor = $self->updateMonitor();
   # $self->logDebug( "AFTER XXX monitor = self->updateMonitor()" );
 
-
-
   $hosttype = $self->cowCase( $hosttype );
   $runtype = $self->cowCase( $runtype );
   print "Engine::Workflow    runtype: $runtype\n";
@@ -1830,8 +1838,6 @@ method runStages ( $stages, $dryrun ) {
     # my $worker     =    0;
     # $worker        =    1 if defined $self->worker();
     # $self->logDebug("worker", $worker);
-    
-
 
     for ( my $stagecounter = 0; $stagecounter < @$stages; $stagecounter++ ) {
         $self->logDebug("stagecounter", $stagecounter);
@@ -1849,6 +1855,18 @@ method runStages ( $stages, $dryrun ) {
         my $username         =    $stage->username();
         my $projectname      =    $stage->projectname();
         my $workflowname     =    $stage->workflowname();
+        
+        my $profile          = $stage->{ profile };
+        $self->logDebug( "profile", $profile );
+        if ( defined $profile ) {
+
+        }
+
+$self->logDebug( "DEBUG EXIT" );
+exit;
+
+
+        #### SET STAGE START TIME
         my $mysqltime        =    $self->util()->getMysqlTime();
         $self->logDebug("mysqltime", $mysqltime);
         $stage->started($mysqltime);

@@ -28,3 +28,6 @@
 [submodule "lib/Util"]
 	path = lib/Util
 	url = https://github.com/syoung/flow-util
+[submodule "lib/Virtual"]
+	path = lib/Virtual
+	url = https://github.com/syoung/flow-virtual

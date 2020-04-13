@@ -57,6 +57,8 @@ PURPOSE
 #
 method doProfileInheritance ( $profiles, $profilename ) {
   $self->logDebug( "profiles", $profiles );
+  $self->logDebug( "profilename", $profilename );
+  
   my $profile = $profiles->{$profilename};
   my $inherits = $profile->{inherits};
   $self->logDebug( "inherits", $inherits );
@@ -73,6 +75,7 @@ method doProfileInheritance ( $profiles, $profilename ) {
     }
 
     foreach my $key ( keys %$inherited ) {
+      $self->logDebug( "key", $key );
       $profile->{ $key } = $self->recurseInheritance ( $profile->{$key}, $inherited->{$key} ); 
     }
   }
@@ -81,14 +84,24 @@ method doProfileInheritance ( $profiles, $profilename ) {
 }
 
 method recurseInheritance ( $profilefield, $inheritedfield ) {
+  $self->logDebug( "profilefield", $profilefield );
+  $self->logDebug( "inheritedfield", $inheritedfield );
+
   #### INHERITED FIELD DOES NOT EXIST IN profile SO ADD IT 
-  if ( not $profilefield ) {
+  if ( not defined $profilefield ) {
     return $inheritedfield;
   }
   #### OTHERWISE, RECURSE IF THE FIELD IS AN OBJECT
   elsif ( ref( $profilefield ) ne "" and ref( $inheritedfield ) ne "" ) {
-    foreach my $key ( %$inheritedfield ) {
-      $profilefield->{$key} = $self->recurseInheritance( $profilefield->{$key}, $inheritedfield->{$key} );
+    foreach my $key ( keys %$inheritedfield ) {
+      $self->logDebug( "key", $key );
+
+      if ( not defined $profilefield->{ $key } ) {
+        $profilefield->{ $key } =  $inheritedfield->{ $key };
+      }
+      else {
+        $profilefield->{ $key } = $self->recurseInheritance( $profilefield->{ $key }, $inheritedfield->{ $key } );
+      }
     }
   }
 
@@ -98,7 +111,7 @@ method recurseInheritance ( $profilefield, $inheritedfield ) {
 
 
 method yamlToData ( $text ) {
-  # $self->logDebug( "text", $text );
+  $self->logDebug( "text", $text );
   return {} if not $text;
 
   my $yaml = YAML::Tiny->new();
@@ -116,6 +129,7 @@ method dataToYaml ( $data ) {
   my $yaml = YAML::Tiny->new();
   $$yaml[ 0 ] = $data;
   my $text = $yaml->write_string( $data );
+  $text =~ s/\'/\"/g;
   $self->logDebug( "text", $text );
 
   return $text;
@@ -150,10 +164,15 @@ method getProfiles ( $file ) {
 #
 #  inherits FIELD IS AS FOLLOWS:
 #
-#
 #   testprofile:
 #
 #     inherits : first,second,third
+#
+#  THEN THE VALUES IN first WILL OVERRIDE THE VALUES IN second
+#
+#  WHICH WILL, IN TURN, OVERRIDE THE VALUES IN third.
+#
+#  SEE METHOD doProfileInheritance ABOVE FOR DETAILS
 #
 #
 method replaceTags ( $data, $profiledata ) {
@@ -161,34 +180,48 @@ method replaceTags ( $data, $profiledata ) {
   $self->logDebug( "profiledata", $profiledata );
 
   foreach my $key ( keys %$data ) {
-    $self->logDebug( "DOING key $key" );
+    # $self->logDebug( "DOING key $key" );
     my $string = $data->{ $key };
+
     next if not $string;
-    while ( $string =~ /<profile:([^>]+)>/ ) {
-      my $keystring = $1;
-      $self->logDebug( "string", $string );
-      my $value = $self->getProfileValue( $keystring, $profiledata );
-      $self->logDebug( "value", $value );
-
-      if ( not $value ) {
-        $self->logDebug( "Can't find profile value for key: $keystring" );
-        print "Can't find profile value for key: $keystring\n";
-        return undef;
-      }
-
-      #### ONLY INSERT SCALAR VALUES
-      if ( ref( $value ) ne "" ) {
-        print "Profile value is not a string: " . YAML::Tiny::Dump( $value ) . "\n";
-        exit;
-      }
-
-      $string =~ s/<profile:$keystring>/$value/ if $value;
-      $data->{ $key } = $string;
-    } 
+    $data->{ $key } = $self->replaceString( $profiledata, $string );
+    if ( not defined $data->{ $key } ) {
+      $self->logError( "**** PROFILE PARSING FAILED. RETURNING undef TO TRIGGER ROLLBACK ****");
+      return undef;
+    }
   }
-  $self->logDebug( "data", $data );
+  # $self->logDebug( "data", $data );
 
   return $data;
+}
+
+method replaceString( $profiledata, $string ) {
+  # $self->logDebug( "profiledata", $profiledata );
+  # $self->logDebug( "string", $string );
+
+  while ( $string =~ /<profile:([^>]+)>/ ) {
+    my $keystring = $1;
+    # $self->logDebug( "string", $string );
+    my $value = $self->getProfileValue( $keystring, $profiledata );
+    # $self->logDebug( "value", $value );
+
+    if ( not $value ) {
+      $self->logError( "*** ERROR *** Can't find profile value for key: $keystring ****" );
+      # print "\n\n\n**** Can't find profile value for key: $keystring ****\n\n\n";
+      return undef;
+    }
+
+    #### ONLY INSERT SCALAR VALUES
+    if ( ref( $value ) ne "" ) {
+      # print "Profile value is not a string: " . YAML::Tiny::Dump( $value ) . "\n";
+      $self->logError( "Profile value is not a string: " . YAML::Tiny::Dump( $value ) . "\n" );
+      return undef;
+    }
+
+    $string =~ s/<profile:$keystring>/$value/ if defined $value;
+  }
+
+  return $string;
 }
 
 method getProfileValue ( $keystring, $profile ) {
@@ -256,8 +289,8 @@ method stageParameterToDatabase ( $username, $package, $installdir, $stage, $par
   $paramdata->{projectname}   = $projectname;
   $paramdata->{workflowname}    = $workflowname;
   $paramdata->{workflownumber}= $workflownumber;
-  $paramdata->{name}      = $paramdata->{paramname};
-  $paramdata->{number}    = $paramnumber;
+  $paramdata->{paramname}      = $paramdata->{paramname};
+  $paramdata->{paramnumber}    = $paramnumber;
   $paramdata->{appnumber}   = $stagenumber,
   $paramdata->{owner}     = $username;
   $paramdata->{username}    = $username;
@@ -277,6 +310,9 @@ method stageParameterToDatabase ( $username, $package, $installdir, $stage, $par
   $self->logDebug( "BEFORE replaceTags    paramdata", $paramdata );
   $paramdata = $self->replaceTags( $paramdata, $profiledata );
   $self->logDebug( "AFTER replaceTags    paramdata", $paramdata );
+  if ( not defined $paramdata ) {
+    return undef;
+  }
 
 
   #### REMOVE STAGE PARAMETER

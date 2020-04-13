@@ -526,7 +526,7 @@ method saveWorkflowToDatabase ($workflowobject) {
 
 	if ( $profiledata ) {
 		$workflowdata = $self->replaceTags( $workflowdata, $profiledata );
-		if ( not $workflowdata ) {
+		if ( not defined $workflowdata ) {
 			print "Failure in Flow::Workflow::replaceTags method.\n";
 			print "workflowdata: " . YAML::Tiny::Dump( $workflowdata ) . "\n";
 			print "profiledata: " . YAML::Tiny::Dump( $profiledata ) . "\n";
@@ -554,6 +554,8 @@ method saveWorkflowToDatabase ($workflowobject) {
 		my $installdir		=	$stageobject->{installdir};
 		my $profilename   = $stageobject->{profilename};
 		my $stageprofile  = $self->doProfileInheritance( $profiledata, $profilename );
+		$self->logDebug( "profilename", $profilename );
+		$self->logDebug( "stageprofile", $stageprofile );
 
 		#### ADD STAGE	
 		my $stagecompleted = $self->stageToDatabase( $username, $stageobject, $projectname, $workflowname, $workflownumber, $stagenumber, $profiledata );
@@ -579,6 +581,7 @@ method saveWorkflowToDatabase ($workflowobject) {
 			$self->logDebug( "paramcompleted", $paramcompleted );
 
 			if ( not $paramcompleted ) {
+				$self->logDebug( "\n*** Failed to load stage $stagenumber parameter $paramnumber\n\n" );
 				$success = 0;
 				last;
 			}
@@ -587,8 +590,11 @@ method saveWorkflowToDatabase ($workflowobject) {
 
 	#### ROLLBACK IF DB INSERT FAILED
 	if ( not $success ) {
+		$self->logDebug( "ADD WORKFLOW FAILED. DOING ROLLBACK" );
 		$self->table()->_removeWorkflow( $workflowdata );
 	}
+
+	$self->logDebug( "RETURNING SUCCESS: ", $success );
 
 	return $success;
 }
@@ -1118,6 +1124,7 @@ method _loadFile {
   print "Can't find inputfile: $inputfile\n" if not -f $inputfile;
 	$self->logDebug("Can't find inputfile", $inputfile) and exit if not -f $inputfile;
 
+	#### HANDLE YAML INPUT
 	my $object	=	undef;
 	my $format	=	$self->format();
 	$self->logDebug("format", $format);
@@ -1126,6 +1133,7 @@ method _loadFile {
 		my $yaml = YAML::Tiny->read($inputfile) or $self->logCritical("Can't open inputfile: $inputfile") and exit;
 		$object 	=	$$yaml[0];
 	}
+	#### HANDLE JSON INPUT
 	else {
 		#$self->logDebug("inputfile", $inputfile);
 		$/ = undef;
@@ -1146,6 +1154,7 @@ method _loadFile {
 	}
 
 	#### CREATE APPS
+	$self->logDebug( "CREATING APPS FOR WORKFLOW IN FILE: $inputfile" );
 	my $apps = [];
   my $appnumber = 1;
 	foreach my $apphash ( @{$object->{apps}} ) {
