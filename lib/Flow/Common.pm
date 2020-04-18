@@ -237,6 +237,19 @@ method getProfileValue ( $keystring, $profile ) {
   return $hash;
 }
 
+# method setProfileValue ( $keystring, $profile, $value ) {
+#   $self->logDebug( "keystring", $keystring );
+#   my @keys = split ":", $keystring;
+#   my $hash = $profile;
+#   foreach my $key ( @keys ) {
+#     $hash  = $hash->{$key};
+#     return undef if not defined $hash;
+#     $self->logDebug("hash", $hash);
+#   }
+
+#   return $hash;
+# }
+
 #####################
 #### DATABASE METHODS
 #####################
