@@ -197,17 +197,16 @@ method replaceTags ( $data, $profiledata ) {
 
 method replaceString( $profiledata, $string ) {
   # $self->logDebug( "profiledata", $profiledata );
-  # $self->logDebug( "string", $string );
+  $self->logDebug( "string", $string );
 
   while ( $string =~ /<profile:([^>]+)>/ ) {
     my $keystring = $1;
-    # $self->logDebug( "string", $string );
+    $self->logDebug( "string", $string );
     my $value = $self->getProfileValue( $keystring, $profiledata );
     # $self->logDebug( "value", $value );
 
     if ( not $value ) {
       $self->logError( "*** ERROR *** Can't find profile value for key: $keystring ****" );
-      # print "\n\n\n**** Can't find profile value for key: $keystring ****\n\n\n";
       return undef;
     }
 

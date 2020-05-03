@@ -36,6 +36,7 @@ has 'epochqueued'	    => ( isa => 'Maybe', is => 'rw', default => 0 );
 
 #### Str
 has 'profiles'	      => ( isa => 'Str|Undef', is => 'rw', default  	=> "" );
+has 'profilename'	    => ( isa => 'Str|Undef', is => 'rw', default  	=> "" );
 has 'prescript'	      => ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
 has 'logfile'	        => ( isa => 'Str|Undef', is => 'rw', required	=>	0	);
 
@@ -510,7 +511,8 @@ method saveWorkflowToDatabase ($workflowobject) {
 	my $workflowname 	= 	$workflowobject->workflowname();
 	my $workflownumber 	= 	$workflowobject->workflownumber();
 	$self->logDebug("username", $username);	
-	
+	my $workflowprofilename = $workflowobject->profilename();
+
 	#### SKIP IF WORKFLOW ALREADY EXISTS
 	my $workflowdata = $workflowobject->exportData();
 	$workflowdata->{username}	=	$username;
@@ -549,10 +551,14 @@ method saveWorkflowToDatabase ($workflowobject) {
 		#$self->logDebug("stageobject", $stageobject);
 		last if not $success;
 
-		my $stagenumber 	= $stageobject->{appnumber};
+		my $stagenumber 	= $stageobject->{ appnumber };
 		my $package			  =	$stageobject->{package};
-		my $installdir		=	$stageobject->{installdir};
-		my $profilename   = $stageobject->{profilename};
+		my $installdir		=	$stageobject->{ installdir };
+		my $profilename   = $stageobject->{ profilename };
+		if ( not $profilename ) {
+			$profilename = $workflowprofilename;
+		}
+
 		my $stageprofile  = $self->doProfileInheritance( $profiledata, $profilename );
 		$self->logDebug( "profilename", $profilename );
 		$self->logDebug( "stageprofile", $stageprofile );

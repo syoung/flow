@@ -1148,11 +1148,14 @@ method addWorkflow ( $projectname, $wkfile ) {
 	my $formats = [
 		[ "--name", "\\w.*" ],
 		[ "--profiles", ".+" ], 
+		[ "--profilename", ".+" ], 
 	];
 	my $options = $self->getOptions( \@ARGV, $formats );
 	$self->logDebug("options", $options);
-	my $profilefile = $options->{profiles};
+	my $profilefile = $options->{ profiles };
 	$self->logDebug( "profilefile", $profilefile );
+	my $profilename = $options->{ profilename };
+	$self->logDebug( "profilename", $profilename );
 
 	my $projecthash	=	$self->_getProjectHash($username, $projectname);
 	$self->logDebug("projecthash", $projecthash);
@@ -1189,6 +1192,7 @@ method addWorkflow ( $projectname, $wkfile ) {
 	$self->logDebug( "profiles", $profiles );
 
 	$workflow->profiles( $profiles );
+	$workflow->profilename( $profilename );
 
 	#### GET WORKFLOW NAME FROM ARGUMENT
 	my $workflowname =  $workflow->workflowname();
@@ -1228,7 +1232,7 @@ method addWorkflow ( $projectname, $wkfile ) {
 	$self->logCritical("workflow->workflowname not defined") and exit if not defined $workflow->workflowname();
 
 	#### ADD WORKFLOW OBJECT TO project
-	$self->logDebug("SENDING workflow->number()", $workflow->workflownumber());
+	$self->logDebug("SAVING workflow->number()", $workflow->workflownumber());
 	$projectobject->_saveWorkflow($workflow);
 
 	#### SAVE project TO DATABASE
@@ -1845,101 +1849,108 @@ method runStages ( $stages, $dryrun ) {
     # $self->logDebug("worker", $worker);
 
     for ( my $stagecounter = 0; $stagecounter < @$stages; $stagecounter++ ) {
-        $self->logDebug("stagecounter", $stagecounter);
-        my $stageobject = $$stages[$stagecounter];
-        $self->logDebug( "stageobject", $stageobject, 1 );
+  
+      $self->logDebug("stagecounter", $stagecounter);
+      my $stageobject = $$stages[$stagecounter];
+    	$self->logDebug( "stageobject->{ stagename }", $stageobject->{ stagename } );
+      # $self->logDebug( "stageobject", $stageobject, 1 );
 
-        if ( $stagecounter != 0 ) {
-            my $ancestor = $stageobject->getAncestor();
-            $self->logDebug("ancestor", $ancestor);
-            my $status = $stageobject->getStatus();
-            $self->logDebug("status", $status);
-            next if $status eq "skip"
-        }
+      if ( $stagecounter != 0 ) {
+          my $ancestor = $stageobject->getAncestor();
+          $self->logDebug("ancestor", $ancestor);
+          my $status = $stageobject->getStatus();
+          $self->logDebug("status", $status);
+          next if $status eq "skip"
+      }
 
-        my $username         =    $stageobject->username();
-        my $projectname      =    $stageobject->projectname();
-        my $workflowname     =    $stageobject->workflowname();
-        my $stagenumber      =    $stageobject->appnumber();
-        my $stagename        =    $stageobject->appname();
+      my $username         =    $stageobject->username();
+      my $projectname      =    $stageobject->projectname();
+      my $workflowname     =    $stageobject->workflowname();
+      my $stagenumber      =    $stageobject->appnumber();
+      my $stagename        =    $stageobject->appname();
 
-        #### LAUNCH VM IF NOT STARTED, OTHERWISE GET IP ADDRESS, ETC.
-   			$stageobject = $self->launchVM( $stageobject );
+      #### LAUNCH VM IF NOT STARTED, OTHERWISE GET IP ADDRESS, ETC.
+ 			$stageobject = $self->launchVM( $stageobject );
+ 			if ( not defined $stageobject ) {
+ 				$self->logError( "stageobject", $stageobject, 1 );
+ 				print "Failed to launchVM\n";
+ 				exit;
+ 			}
 
-        #### SET STAGE START TIME
-        my $mysqltime        =    $self->getMysqlTime();
-        $self->logDebug("mysqltime", $mysqltime);
-        $stageobject->started($mysqltime);
-        
-        #### CLEAR STDOUT/STDERR FILES
-        my $stdoutfile    =    $stageobject->stdoutfile();
-        File::Path::rmtree( $stdoutfile ) if -f $stdoutfile;
-        my $stderrfile    =    $stageobject->stderrfile();
-        File::Path::rmtree(  $stderrfile ) if -f $stderrfile;
-        
-        #### REPORT STARTING STAGE
-        $self->bigDisplayBegin("'$projectname.$workflowname' stage $stagenumber $stagename status: RUNNING");
-        
-        $stageobject->initialiseRunTimes($mysqltime);
+      #### SET STAGE START TIME
+      my $mysqltime        =    $self->getMysqlTime();
+      $self->logDebug("mysqltime", $mysqltime);
+      $stageobject->started($mysqltime);
+      
+      #### CLEAR STDOUT/STDERR FILES
+      my $stdoutfile    =    $stageobject->stdoutfile();
+      File::Path::rmtree( $stdoutfile ) if -f $stdoutfile;
+      my $stderrfile    =    $stageobject->stderrfile();
+      File::Path::rmtree(  $stderrfile ) if -f $stderrfile;
+      
+      #### REPORT STARTING STAGE
+      $self->bigDisplayBegin("'$projectname.$workflowname' stage $stagenumber $stagename status: RUNNING");
+      
+      $stageobject->initialiseRunTimes($mysqltime);
 
-        #### SET STATUS TO running
-        $stageobject->setStatus('running');
+      #### SET STATUS TO running
+      $stageobject->setStatus('running');
 
-        # #### NOTIFY STATUS
-        # if ( $worker ) {
-        #     $self->updateJobStatus($stage, "started");
-        # }
-        # else {
-        #     my $data = $self->_getStatus($username, $projectname, $workflowname);
-        #     $self->logDebug("DOING notifyStatus(data)");
-        #     # $self->notifyStatus($data) if defined $exchange and $exchange eq "true";
-        # }
-        
-        ####  RUN STAGE
-        $self->logDebug("Running stage $stagenumber", $stagename);    
-        my ($exitcode) = $stageobject->run( $dryrun );
-        $self->logDebug("Stage $stagenumber-$stagename exitcode", $exitcode);
+      # #### NOTIFY STATUS
+      # if ( $worker ) {
+      #     $self->updateJobStatus($stage, "started");
+      # }
+      # else {
+      #     my $data = $self->_getStatus($username, $projectname, $workflowname);
+      #     $self->logDebug("DOING notifyStatus(data)");
+      #     # $self->notifyStatus($data) if defined $exchange and $exchange eq "true";
+      # }
+      
+      ####  RUN STAGE
+      $self->logDebug("Running stage $stagenumber", $stagename);    
+      my ($exitcode) = $stageobject->run( $dryrun );
+      $self->logDebug("Stage $stagenumber-$stagename exitcode", $exitcode);
 
-        #### STOP IF THIS STAGE DIDN'T COMPLETE SUCCESSFULLY
-        #### ALL APPLICATIONS MUST RETURN '0' FOR SUCCESS)
-        if ( $exitcode == 0 ) {
-            $self->logDebug("Stage $stagenumber: '$stagename' completed successfully");
-            $stageobject->setStatus('completed');
-            $self->bigDisplayEnd("'$projectname.$workflowname' stage $stagenumber $stagename status: COMPLETED");
-            
-            # #### NOTIFY STATUS
-            # my $status    =    "completed";
-            # if ( $worker ) {
-            #     $self->logDebug("DOING self->updateJobStatus: $status");
-            #     $self->updateJobStatus($stage, $status);
-            # }
-            # else {
-            #     my $data = $self->_getStatus($username, $projectname, $workflowname);
-            #     # $self->notifyStatus($data) if defined $exchange and $exchange eq "true";
-            # }
-        }
-        else {
-            $stageobject->setStatus('error');
-            $self->bigDisplayEnd("'$projectname.$workflowname' stage $stagenumber $stagename status: ERROR");
+      #### STOP IF THIS STAGE DIDN'T COMPLETE SUCCESSFULLY
+      #### ALL APPLICATIONS MUST RETURN '0' FOR SUCCESS)
+      if ( $exitcode == 0 ) {
+          $self->logDebug("Stage $stagenumber: '$stagename' completed successfully");
+          $stageobject->setStatus('completed');
+          $self->bigDisplayEnd("'$projectname.$workflowname' stage $stagenumber $stagename status: COMPLETED");
+          
+          # #### NOTIFY STATUS
+          # my $status    =    "completed";
+          # if ( $worker ) {
+          #     $self->logDebug("DOING self->updateJobStatus: $status");
+          #     $self->updateJobStatus($stage, $status);
+          # }
+          # else {
+          #     my $data = $self->_getStatus($username, $projectname, $workflowname);
+          #     # $self->notifyStatus($data) if defined $exchange and $exchange eq "true";
+          # }
+      }
+      else {
+          $stageobject->setStatus('error');
+          $self->bigDisplayEnd("'$projectname.$workflowname' stage $stagenumber $stagename status: ERROR");
 
-            # #### NOTIFY ERROR
-            # if ( $worker ) {
-            #     $self->updateJobStatus($stage, "exitcode: $exitcode");
-            # }
-            # else {
-            #     my $data = $self->_getStatus($username, $projectname, $workflowname);
-            #     # $self->notifyError($data, "Workflow '$projectname.$workflowname' stage #$stagenumber '$stagename' failed with exitcode: $exitcode") if defined $exchange and $exchange eq "true";
-            # }
-            
-            $self->logDebug("Exiting runStages");
-            return 0;
-        }
+          # #### NOTIFY ERROR
+          # if ( $worker ) {
+          #     $self->updateJobStatus($stage, "exitcode: $exitcode");
+          # }
+          # else {
+          #     my $data = $self->_getStatus($username, $projectname, $workflowname);
+          #     # $self->notifyError($data, "Workflow '$projectname.$workflowname' stage #$stagenumber '$stagename' failed with exitcode: $exitcode") if defined $exchange and $exchange eq "true";
+          # }
+          
+          $self->logDebug("Exiting runStages");
+          return 0;
+      }
 
-        #### SET SUCCESSOR IF PRESENT
-        my $successor    =    $stageobject->getSuccessor();
-        $self->logDebug("successor", $successor);
-        $stagecounter = $successor - 2 if defined $successor and $successor ne "";
-        $self->logDebug("stagecounter", $stagecounter);    
+      #### SET SUCCESSOR IF PRESENT
+      my $successor    =    $stageobject->getSuccessor();
+      $self->logDebug("successor", $successor);
+      $stagecounter = $successor - 2 if defined $successor and $successor ne "";
+      $self->logDebug("stagecounter", $stagecounter);
     }   
    
 		$self->logDebug( "DEBUG EXIT" ) and exit;
@@ -1950,37 +1961,57 @@ method runStages ( $stages, $dryrun ) {
 method launchVM ( $stageobject ) {
   my $profilehash      =    $stageobject->{ profilehash };
   $self->logDebug( "profilehash", $profilehash );
-  return if not defined $profilehash;
-  return if not defined $self->getProfileValue( "virtual", $profilehash );
+  return $stageobject if not defined $profilehash;
+  return $stageobject if not defined $self->getProfileValue( "virtual", $profilehash );
 
   my $virtualtype = $self->getProfileValue( "virtual:type", $profilehash );
   $self->logDebug( "virtualtype", $virtualtype );
   my $virtual = $self->setVirtual( $virtualtype );
   $self->logDebug( "self->virtual()", $self->virtual() );
 
-  # my $ipaddress = $virtual->nodeExists( $stageobject );
-  # $self->logDebug( "ipaddress", $ipaddress );
-
-  # if ( defined $ipaddress ) {
-  # 	$stageobject->{ profilehash }->{ host }->{ name } = $ipaddress;
-  # 	# $self->getInstance( $ipaddress, $stageobject );
-  # }
-  # else {			  	
-
+  my ( $instancename, $instanceid, $ipaddress ) = $virtual->nodeExists( $stageobject );
+  $self->logDebug( "ipaddress", $ipaddress );
+  if ( not defined $ipaddress ) {
   	$self->logDebug( "DOING virtual->launchNode( stageobject )" );
-		my ( $instanceid, $instancename, $ipaddress ) = $virtual->launchNode( $stageobject );
-		$self->logDebug("instanceid", $instanceid);
-		$self->logDebug("instancename", $instancename);
+		# ( $instanceid, $instancename, $ipaddress ) = $virtual->launchNode( $stageobject );
+  }
+	$self->logDebug("instanceid", $instanceid);
+	$self->logDebug("instancename", $instancename);
 
-		if ( not defined $stageobject->{ profilehash } ) {
-			$stageobject->{ profilehash } = {};
-		}
-		$stageobject->profilehash()->{ instanceid } = $instanceid;
-		$stageobject->profilehash()->{ instancename } = $instancename;
-		$stageobject->profilehash()->{ ipaddress } = $ipaddress;
+	if ( not defined $instanceid 
+		or not defined $instancename
+		or not defined $ipaddress ) {
+		$self->logDebug( "Failed to get info or launch VM" );
+		print "Failed to launch or detect VM\n";
+		return undef;
+	}
 
-  # }
+	#### ADD VARIABLES TO profilehash
+	$stageobject->profilehash()->{ instance } = {};
+	$stageobject->profilehash()->{ instance }->{ id } = $instanceid;
+	$stageobject->profilehash()->{ instance }->{ name } = $instancename;
+	$stageobject->profilehash()->{ instance }->{ ipaddress } = $ipaddress;  
   $self->logDebug( "profilehash", $profilehash, 1 );
+
+
+#### INSERT INSTANCE DETAILS INTO DATABASE
+#   sqlite> .schema instancestatus
+# CREATE TABLE instancestatus
+# (
+#   username        VARCHAR(30) NOT NULL,
+#   projectname     VARCHAR(20) NOT NULL,
+#   workflowname    VARCHAR(20) NOT NULL,
+#   stagename       VARCHAR(20) NOT NULL,
+#   status          VARCHAR(30),
+#   started         DATETIME NOT NULL,
+#   stopped         DATETIME NOT NULL,
+#   terminated      DATETIME NOT NULL,
+#   polled          DATETIME NOT NULL,
+#   hours           INT(12),
+  
+#   PRIMARY KEY ( username, projectname, workflowname, stagename )
+# );
+
 
 	return $stageobject;	
 } 
