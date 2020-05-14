@@ -84,7 +84,7 @@ sub setEnvarsFile {
     "export PERL5LIB=$INSTALLDIR/lib:\$PERL5LIB"
   ];
   my $contents = join "\n", @$commands;
-  my $perlenvarfile = "$INSTALLDIR/perl/.envars";
+  my $perlenvarfile = "$INSTALLDIR/perl/envars";
   my $perlenvars    = getFileContents( $perlenvarfile );
   print "Perlenvars: $perlenvars\n";
   $contents .= "\n";
@@ -295,11 +295,11 @@ sub installRepo {
 sub sourceEnvars {
   print "To add the environment variables, source your ~/.bashrc file:\n";
   print " . ~/.bashrc\n";
-  print "Or source the .envars files directly:\n";
+  print "Or source the envars files directly:\n";
 
   my $files = [
-    "$Bin/.envars",
-    "$Bin/apps/repo/latest/.envars"
+    "$Bin/envars",
+    "$Bin/apps/repo/latest/envars"
   ];
 
   foreach my $file ( @$files ) {

@@ -14,7 +14,8 @@ class Flow::Main with (Util::Logger,
 use File::Path;
 use JSON;
 use Getopt::Simple;
-# use TryCatch;
+use DateTime;
+# use DateTime::Format::Duration;
 use Data::Dumper;
 use YAML;
 use Sys::Hostname;
@@ -294,7 +295,7 @@ WHERE username='$username'};
 
   	my $workflows = $self->table()->getWorkflowsByProject( $project );
   	foreach my $workflow ( @$workflows ) {
-  		$output .= "$workflow->{workflownumber}.  $workflow->{workflowname}\n";
+  		$output .= "  Workflow $workflow->{workflownumber} :  $workflow->{workflowname}\n";
   	}
   	print "$output\n";
   }
@@ -344,13 +345,7 @@ method describe ( $projectname = undef, $workflowid = undef ) {
 	}
 
 	#### GET WORKFLOW NAME IF workflownumber PROVIDED
-	my $workflowname   = $workflowid;
-	if ( $workflowname ) {
-		if ( $workflowid =~ /^\d+$/ ) {
-			my $workflownumber = $workflowid;
-			$workflowname = $self->table()->getWorkflowByNumber( $username, $projectname, $workflownumber );
-		}		
-	}
+	my $workflowname   = $self->getWorkflowName( $username, $projectname, $workflowid );
 	$self->logDebug("workflowname", $workflowname);
 
 	#### GET OPTS (E.G., WORKFLOW)
@@ -362,8 +357,219 @@ method describe ( $projectname = undef, $workflowid = undef ) {
 	print $output;
 }
 
+method getWorkflowName ( $username, $projectname, $workflowid ) {
+	my $workflowname   = $workflowid;
+	if ( $workflowname ) {
+		if ( $workflowid =~ /^\d+$/ ) {
+			my $workflownumber = $workflowid;
+			$workflowname = $self->table()->getWorkflowByNumber( $username, $projectname, $workflownumber );
+		}		
+	}
+
+	return $workflowname;
+}
+
+method status ( $projectname = undef, $workflowid = undef ) {
+
+	#### SET USERNAME AND OWNER
+	my $username    =   $self->setUsername();
+	print "username not defined\n" and exit if not defined $username;
+
+	#### CHECK INPUTS
+	if ( not defined $projectname ) {
+		print "*** Project not defined ***\n";
+		print $self->describeUsage(); 
+		exit ;
+	}
+
+	#### GET WORKFLOW NAME IF workflownumber PROVIDED
+	my $workflowname   = $self->getWorkflowName( $username, $projectname, $workflowid );
+	$self->logDebug("projectname", $projectname);
+	$self->logDebug("workflowname", $workflowname);
+	$self->logDebug("username", $username);
+
+	my $output = "Project: $projectname\n";
+	my $workflowobjects = $self->getWorkflows( $username, $projectname ); 
+	foreach my $workflowobject ( @$workflowobjects ) {
+		if ( defined $workflowname and $workflowobject->{ workflowname } ne $workflowname ) {
+			next;
+		}
+		$output .= "  Workflow " . $workflowobject->{ workflownumber } . " " . $workflowobject->{ workflowname } . "\n"; 
+
+		my $query = "SELECT appnumber, appname, status, queued, started, completed
+	FROM stage 
+	WHERE projectname='$projectname'
+	AND workflowname='$workflowobject->{ workflowname }'
+	ORDER BY workflownumber";
+		$self->logDebug( "query", $query );
+
+	  my $stagesdata = $self->table()->db()->queryhasharray( $query );
+		$self->logDebug( "stagesdata", $stagesdata );
+		$stagesdata = $self->getDurations( $stagesdata );
+
+		my $fields = [
+			"#", "appname", "status", "duration", "queued", "started", "completed"
+		];
+		my $lengths = $self->maxLengths( $stagesdata, $fields );
+		# $self->logDebug( "lengths", $lengths );
+		my $padding = 2;
+
+		$output .=  "    " . $self->formatStatusLine( $lengths, $fields, $fields );
+
+		foreach my $stagedata ( @$stagesdata ) {
+			$self->logDebug( "stagedata", $stagedata );
+			$stagedata->{ '#' } = $stagedata->{ appnumber };
+			my $values = $self->statusValues( $stagedata, $fields );
+			$output .= "    " . $self->formatStatusLine( $lengths, $fields, $values );
+			# $output .= "\n";
+		}
+	}
+
+	print $output;
+}
+
+method statusValues ( $stagedata, $fields ) {
+	my $array = [];
+	foreach my $field ( @$fields ) {
+		push @$array, $stagedata->{ $field };
+	}
+
+	return $array;
+}
+
+method formatStatusLine( $lengths, $fields, $values ) {
+	# $self->logDebug( "lengths", $lengths );
+	# $self->logDebug( "fields", $fields );
+
+	my $line = "";
+	my $padding = 2;
+	for ( my $i = 0; $i < scalar( @$fields ); $i++ ) {
+		my $field = $$fields[ $i ];
+		my $value = $$values[ $i ] || "";
+		my $maxlength = $lengths->{ $field } + $padding;
+		$line .= $value;
+		my $gap = $maxlength - length( $value );
+		# $self->logDebug( "gap", $gap );
+		$line .= " " x $gap;
+	}
+	$line .= "\n";
+
+	return $line;
+}
+
+method getDurations ( $stagesdata ) {
+	foreach my $stagedata ( @$stagesdata ) {
+		# $self->logDebug( "stagedata", $stagedata, 1 );
+
+		my $completed = $stagedata->{ completed };
+		my $started   = $stagedata->{ started };
+		# $self->logDebug( "completed", $completed );
+
+
+		my $duration = $self->getDuration( $completed, $started );
+		# $self->logDebug( "duration", $duration );
+
+		$stagedata->{ duration } = $duration;
+	}
+
+	return $stagesdata;
+}
+
+method maxLengths( $stagesdata, $fields ) {
+	$self->logDebug( "stagesdata", $stagesdata );
+	# $self->logDebug( "fields", $fields );
+	my $limit = scalar( @$fields );
+	# $self->logDebug( "limit", $limit );
+	my $lengths = {};
+	for ( my $i = 0; $i < $limit; $i++ ) {
+		my $field = $$fields[ $i ];
+		# $self->logDebug( "field", $field );
+		my $max = length( $field );
+		# $self->logDebug( "max", $max );
+		foreach my $stagedata ( @$stagesdata ) {
+			# $self->logDebug( "stagedata", $stagedata );
+			my $length = length( $stagedata->{ $field } ) || 0;
+			# $self->logDebug( "length", $length );
+			if ( $length > $max ) {
+				$max = $length;
+			}
+		}
+		$lengths->{ $field } = $max;
+	}
+
+	return $lengths;
+}
+
+method hoursMinsSecs ( $seconds ) {
+  $self->logDebug( "seconds", $seconds );
+  my $hours = int($seconds / 3600);
+  my $minutes = int( ($seconds % 3600) / 60 );
+  $seconds = ( ($seconds % 3600) % 60 );
+
+  $hours = $self->padZero($hours, 2);
+  $minutes = $self->padZero($minutes, 2);
+  $seconds = $self->padZero($seconds, 2);
+  
+  return "$hours:$minutes:$seconds";
+}
+
+method getDuration ( $completed, $started ) {
+	$self->logDebug( "completed", $completed );
+	$self->logDebug( "started", $started );
+	return "" if $self->emptyDate( $completed ) or $self->emptyDate( $started );
+
+	my $completedate = $self->getDatetime( $completed );
+	my $startdate = $self->getDatetime( $started );
+	# $self->logDebug( "completedate", $completedate );
+	# $self->logDebug( "startdate", $startdate );
+	# my $difference = $completedate - $startdate;
+	# $self->logDebug( "difference", $difference );
+	# $self->logDebug( "difference->minutes", $difference->minutes() );
+
+	my $difference = $completedate->delta_ms( $startdate );
+	# $self->logDebug( "difference", $difference );
+	my $minutes  = $difference->{ minutes };
+	$self->logDebug( "minutes", $minutes );
+	my $seconds  = $difference->{ seconds };
+	$self->logDebug( "seconds", $seconds );
+	
+	my $totalseconds = $seconds + ( 60 * $minutes );
+	my $duration = $self->hoursMinsSecs( $totalseconds );
+
+	return $duration;
+}
+
+method emptyDate ( $datetime ) {
+	return 1 if not defined $datetime;
+	return 1 if $datetime eq "";
+	return 1 if $datetime eq "0000-00-00 00:00:00";
+
+	return 0;
+}
+
+method getDatetime( $string ) {
+
+	my ( $year, $month, $day, $hour, $minute, $second ) = $string =~ /^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)$/;
+	# $self->logDebug( "year", $year );
+	# $self->logDebug( "second", $second );
+
+	return DateTime->new(
+    year       => $year,
+    month      => $month,
+    day        => $day,
+    hour       => $hour,
+    minute     => $minute,
+    second     => $second,
+    time_zone  => 'UTC' 
+   );
+}
+
 method cli ( $projectname ) {
 	$self->logDebug("projectname", $projectname);
+
+	#### SET USERNAME
+	my $username    =   $self->setUsername();
+	print "username not defined\n" and exit if not defined $username;
 
 	#### GET OPTS (E.G., WORKFLOW)
 	$self->_getopts();
@@ -378,6 +584,7 @@ method cli ( $projectname ) {
 		my $workflowname = $workflow->{workflowname};
 
 		$self->logDebug( "workflow", $workflow );
+		$output =~ s/\n\s+$/\n/;
 		$output .= "  # Workflow $workflowindex: ";
 		$output .= $workflowname;
 		$output .= "\n";
@@ -415,7 +622,7 @@ method cli ( $projectname ) {
 				my $value = $parameter->{ value };
 				if ( defined $value ) {
 					$value = $self->replaceString( $profiledata, $value ); 
-					$value = $self->replaceWorkflowTags( $projectname, $workflowname, $value );
+					$value = $self->replaceWorkflowTags( $username, $projectname, $workflowname, $value );
 					$command .= $value . " ";
 				}
 
@@ -432,11 +639,22 @@ method cli ( $projectname ) {
 	print $output;
 }
 
-method replaceWorkflowTags ( $projectname, $workflowname, $string  ) {
-    $string    =~    s/<PROJECT>/$projectname/g;
-    $string    =~    s/<WORKFLOW>/$workflowname/g;
+method replaceWorkflowTags ( $username, $projectname, $workflowname, $string  ) {
 
-    return $string;
+  # #### GET FILEROOT & USERHOME
+  # my $fileroot = $self->util()->getFileroot( $username );  
+  # my $userhome = $self->util()->getUserhome( $username );  
+  # $self->logDebug( "fileroot", $fileroot );  
+  # $self->logDebug( "userhome", $userhome );
+
+  # #### SET OUTPUT DIR
+  # my $workflowdir =  "$fileroot/$projectname/$workflowname";
+
+  $string    =~    s/<PROJECT>/$projectname/g;
+  $string    =~    s/<WORKFLOW>/$workflowname/g;
+  # $string    =~    s/<WORKFLOWDIR>/$workflowdir/g;
+
+  return $string;
 }
 
 method getCleanProject ( $projectname ) {
@@ -1212,9 +1430,9 @@ method addWorkflow ( $projectname, $wkfile ) {
 	}
 	$workflow->workflowname( $workflowname );
 
+	#### SKIP IF WORKFLOW ALREADY EXISTS
 	my $isworkflow = $self->table()->isWorkflow( $username, $projectname, $workflowname ) ;
 	$self->logDebug("isworkflow", $isworkflow);
-
 	if ( $isworkflow ) {
 		print "Workflow '$workflowname' already exists in project '$projectname'. Use '--workflowname newName' to add workflow\n";
 		exit; 
@@ -1953,7 +2171,7 @@ method runStages ( $stages, $dryrun ) {
       $self->logDebug("stagecounter", $stagecounter);
     }   
    
-		$self->logDebug( "DEBUG EXIT" ) and exit;
+		# $self->logDebug( "DEBUG EXIT" ) and exit;
 
     return 1;
 }
@@ -1971,9 +2189,10 @@ method launchVM ( $stageobject ) {
 
   my ( $instancename, $instanceid, $ipaddress ) = $virtual->nodeExists( $stageobject );
   $self->logDebug( "ipaddress", $ipaddress );
+
   if ( not defined $ipaddress ) {
   	$self->logDebug( "DOING virtual->launchNode( stageobject )" );
-		# ( $instanceid, $instancename, $ipaddress ) = $virtual->launchNode( $stageobject );
+		( $instanceid, $instancename, $ipaddress ) = $virtual->launchNode( $stageobject );
   }
 	$self->logDebug("instanceid", $instanceid);
 	$self->logDebug("instancename", $instancename);
@@ -2372,31 +2591,31 @@ method _showStage ($workflowhash, $samplehash, $stagenumber) {
 	
 	require Engine::Workflow;
 	my $workflowobject	= Engine::Workflow->new($workflowhash);
-    my $stages = $workflowobject->getStagesByWorkflow($workflowhash);
+  my $stages = $workflowobject->getStagesByWorkflow($workflowhash);
 	$stages = $workflowobject->setStageParameters($stages, $workflowhash);
-    my $stage = $$stages[$stagenumber - 1];
-    print "Project '$project' workflow '$workflow' for user '$username' does not have a stage $stagenumber\n" and exit if not defined $stage;
-    #$workflowobject->printStage($stage);
+  my $stage = $$stages[$stagenumber - 1];
+  print "Project '$project' workflow '$workflow' for user '$username' does not have a stage $stagenumber\n" and exit if not defined $stage;
+  #$workflowobject->printStage($stage);
     
-    #### GET FILEROOT
+  #### GET FILEROOT
 	my $fileroot = $workflowobject->util()->getFileroot($username);	
 	$self->logDebug("fileroot", $fileroot);
     
-    #### SET FILE DIRS
+  #### SET FILE DIRS
 	my ($scriptdir, $stdoutdir, $stderrdir) = $workflowobject->setFileDirs($fileroot, $project, $workflow);
 	$self->logDebug("scriptdir", $scriptdir);
 
-    my $stagename	=	$stage->{name};
-    my $id			=	$samplehash->{sample};
-    my $successor	=	$stage->{successor};
-    $self->logDebug("successor", $successor);
-    
-    $stage->{stageparameters} = [] if not defined $stage->{stageparameters};
+  my $stagename	=	$stage->{name};
+  my $id			=	$samplehash->{sample};
+  my $successor	=	$stage->{successor};
+  $self->logDebug("successor", $successor);
+  
+  $stage->{stageparameters} = [] if not defined $stage->{stageparameters};
 
-    $stage->{username}		=  	$workflowhash->{username};
-    $stage->{db}			=	$self->table()->db();
-    $stage->{conf}			=  	$self->conf();
-    $stage->{fileroot}		=  	$fileroot;
+  $stage->{username}		=  	$workflowhash->{username};
+  $stage->{db}			=	$self->table()->db();
+  $stage->{conf}			=  	$self->conf();
+  $stage->{fileroot}		=  	$fileroot;
 
 	#### SET OUTPUT DIR
 	my $outputdir =  "$fileroot/$project/$workflow";

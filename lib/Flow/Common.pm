@@ -111,7 +111,7 @@ method recurseInheritance ( $profilefield, $inheritedfield ) {
 
 
 method yamlToData ( $text ) {
-  $self->logDebug( "text", $text );
+  # $self->logDebug( "text", $text );
   return {} if not $text;
 
   my $yaml = YAML::Tiny->new();

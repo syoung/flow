@@ -4,7 +4,7 @@ log/*
 *~
 db.sqlite
 config.yml
-.envars
+envars
 .pem
 #### INCLUDED FILES
 !apps/.dummy
