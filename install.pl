@@ -29,7 +29,7 @@
 ##    2. CHECKOUT OS-SPECIFIC BRANCH OF perl SUBMODULE
 ##    3. COPY DB TEMPLATE FROM TEMPLATE IF NOT EXISTS
 ##    4. COPY CONFIG FILE FROM TEMPLATE IF NOT EXISTS
-##    5. RUN envars.sh TO SET ~/.envars FILE
+##    5. RUN envars.sh TO SET ~/envars FILE
 ##    6. INSTALL repo
 
 # use FindBin qw($Bin);
@@ -43,6 +43,7 @@ use lib dirname(abs_path($0));
 
 my $UBUNTU_VERSION  = "18.04";
 my $CENTOS_VERSION  = "7.7";
+my $OSX_VERSION = "osx10.14.6";
 
 #### GET OPERATING SYSTEM
 my $os = $^O;
@@ -62,7 +63,7 @@ copyDbFile();
 ## 4. COPY CONFIG FILE FROM TEMPLATE IF NOT EXISTS
 copyConfigFile( $os );
 
-## 5. RUN envars.sh TO SET ~/.envars FILE
+## 5. RUN envars.sh TO SET ~/envars FILE
 setEnvarsFile( $INSTALLDIR );
 
 ## 6. INSTALL repo
@@ -73,7 +74,7 @@ installRepo();
 sub setEnvarsFile {
   my $INSTALLDIR = shift;
 
-  my $envarsfile = "$INSTALLDIR/.envars";
+  my $envarsfile = "$INSTALLDIR/envars";
   my $appname = "FLOW";
   my $appdir = $appname . "_HOME";
   my $commands = [
@@ -85,12 +86,14 @@ sub setEnvarsFile {
   ];
   my $contents = join "\n", @$commands;
   my $perlenvarfile = "$INSTALLDIR/perl/envars";
-  my $perlenvars    = getFileContents( $perlenvarfile );
-  print "Perlenvars: $perlenvars\n";
-  $contents .= "\n";
-  $contents .= $perlenvars;
-  $contents  =~ s/<INSTALLDIR>/$INSTALLDIR/g;
+  if ( -f $perlenvarfile ) {
+    my $perlenvars    = getFileContents( $perlenvarfile );
+    print "Perlenvars: $perlenvars\n";
+    $contents .= "\n";
+    $contents .= $perlenvars;
+  }
 
+  $contents  =~ s/<INSTALLDIR>/$INSTALLDIR/g;    
   print "contents: $contents\n";
   printFile( $envarsfile, $contents );
 
@@ -211,7 +214,7 @@ sub checkoutPerlBranch {
   print "\n";
   if ( $os eq "darwin" ) {
     print "Loading embedded perl branch for OSX:\n";
-    $branch = "osx10.14.6";
+    $branch = $OSX_VERSION;
     $archname = "darwin-2level";
   }
   elsif ( $os eq "linux" ) {
@@ -247,7 +250,7 @@ sub checkoutPerlBranch {
       $version =~ s/\s+//;
 
       # print "version: $version\n";
-      if ( $version > $UBUNTU_VERSION ) {
+      if ( $version > $CENTOS_VERSION ) {
         print "VERSION $version IS GREATER THAN MAX SUPPORTED CENTOS VERSION $CENTOS_VERSION\n";
         $version = $CENTOS_VERSION;
       } 

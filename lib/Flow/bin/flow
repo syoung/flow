@@ -95,8 +95,9 @@ if ( not defined $installdir ) {
   print "Can't find FLOW_HOME environment variable. Exiting\n";
   exit;
 }
+my $HOME = $ENV{'HOME'};
 my $configfile  =   "$installdir/conf/config.yml";
-my $logfile  =   "$installdir/log/flow.log";
+my $logfile  =   "$HOME/flow.log";
 my $conf = Conf::Yaml->new(
     memory      =>  1,
     inputfile	  =>	$configfile,
@@ -130,6 +131,7 @@ $subcommand = "deleteproject" if $subcommand eq "delp";
 $subcommand = "addworkflow" if $subcommand eq "addw";
 $subcommand = "runworkflow" if $subcommand eq "runw";
 $subcommand = "deleteworkflow" if $subcommand eq "delw";
+$subcommand = "runstage" if $subcommand eq "runs";
 
 if ( $subcommand =~ /^(add|delete|load|edit|insert|run)/ ) {
     $subcommand =~ /^(add|delete|load|edit|insert|run)(.+)$/;

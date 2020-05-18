@@ -1434,7 +1434,7 @@ method addWorkflow ( $projectname, $wkfile ) {
 	my $isworkflow = $self->table()->isWorkflow( $username, $projectname, $workflowname ) ;
 	$self->logDebug("isworkflow", $isworkflow);
 	if ( $isworkflow ) {
-		print "Workflow '$workflowname' already exists in project '$projectname'. Use '--workflowname newName' to add workflow\n";
+		print "Workflow '$workflowname' already exists in project '$projectname'. Use '--name newName' to add workflow\n";
 		exit; 
 	}
 	
@@ -1466,7 +1466,6 @@ method addWorkflow ( $projectname, $wkfile ) {
 		print "\n*** ERROR *** Failed to add workflow '$workflowname' to project '$projectname'\n\n";
 	}
 }
-
 
 method deleteWorkflowUsage () {
 	return "\nUSAGE: flow (delw|deleteworkflow) <projectname> <workflowname/workflownumber>\n\n"; 
@@ -1551,8 +1550,8 @@ ORDER BY workflownumber");
 	$self->logDebug("workflows", $workflows);
 
 	for my $workflow ( @$workflows ) {
-		if ( $workflow->{number} > $workflownumber ) {
-			my $updatednumber = $workflow->{number} - 1;
+		if ( $workflow->{workflownumber} > $workflownumber ) {
+			my $updatednumber = $workflow->{workflownumber} - 1;
 
 			#### TABLE: workflow
 			$query = "UPDATE workflow
@@ -2187,13 +2186,15 @@ method launchVM ( $stageobject ) {
   my $virtual = $self->setVirtual( $virtualtype );
   $self->logDebug( "self->virtual()", $self->virtual() );
 
-  my ( $instancename, $instanceid, $ipaddress ) = $virtual->nodeExists( $stageobject );
-  $self->logDebug( "ipaddress", $ipaddress );
+  my ( $instancename, $instanceid, $ipaddress ); 
+  # my ( $instancename, $instanceid, $ipaddress ) = $virtual->getNodeinfo( $stageobject );
+  # $self->logDebug( "ipaddress", $ipaddress );
 
-  if ( not defined $ipaddress ) {
+  # if ( not defined $ipaddress ) {
   	$self->logDebug( "DOING virtual->launchNode( stageobject )" );
 		( $instanceid, $instancename, $ipaddress ) = $virtual->launchNode( $stageobject );
-  }
+  # }
+
 	$self->logDebug("instanceid", $instanceid);
 	$self->logDebug("instancename", $instancename);
 

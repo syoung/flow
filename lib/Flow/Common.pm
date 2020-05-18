@@ -91,19 +91,47 @@ method recurseInheritance ( $profilefield, $inheritedfield ) {
   if ( not defined $profilefield ) {
     return $inheritedfield;
   }
-  #### OTHERWISE, RECURSE IF THE FIELD IS AN OBJECT
-  elsif ( ref( $profilefield ) ne "" and ref( $inheritedfield ) ne "" ) {
-    foreach my $key ( keys %$inheritedfield ) {
-      $self->logDebug( "key", $key );
 
-      if ( not defined $profilefield->{ $key } ) {
-        $profilefield->{ $key } =  $inheritedfield->{ $key };
-      }
-      else {
-        $profilefield->{ $key } = $self->recurseInheritance( $profilefield->{ $key }, $inheritedfield->{ $key } );
-      }
-    }
+  my $profiletype = ref( $profilefield );
+  my $inheritedtype = ref( $inheritedfield );
+  $self->logDebug( "profiletype", $profiletype );
+  $self->logDebug( "inheritedtype", $inheritedtype );
+
+  if ( $profiletype ne $inheritedtype ) {
+    print "Mismatch between profile data types.\n";
+    print "Original key type: $profiletype\n";
+    print "Inherited key type: $inheritedtype\n";
+    exit;
   }
+
+  # #### IF THE 
+  # if ( ( $profiletype eq "" or $profiletype eq "HASH" ) and ( $inheritedtype  eq "" or $inheritedtype  eq "HASH" ) {
+  #   $profile->{ $key } = $self->recurseInheritance ( $profile->{ $key }, $inherited->{ $key } ); 
+  # }
+  # elsif ( not defined $profiletype eq "ARRAY" ) {
+  #   my $regex = $profile->{ $key };
+  #   if ( grep( /^$regex$/, @array ) ) {
+              
+  #   }
+
+  # }
+
+
+  # #### OTHERWISE, RECURSE IF THE FIELD IS AN OBJECT
+  # elsif ( ref( $profilefield ) ne "" and ref( $inheritedfield ) ne "" ) {
+
+
+  #   foreach my $key ( keys %$inheritedfield ) {
+  #     $self->logDebug( "key", $key );
+
+  #     if ( not defined $profilefield->{ $key } ) {
+  #       $profilefield->{ $key } =  $inheritedfield->{ $key };
+  #     }
+  #     else {
+  #       $profilefield->{ $key } = $self->recurseInheritance( $profilefield->{ $key }, $inheritedfield->{ $key } );
+  #     }
+  #   }
+  # }
 
   #### OTHERWISE, KEEP THE EXISTING VALUE IN profile
   return $profilefield;

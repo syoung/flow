@@ -1,10 +1,9 @@
 ---
 core:
   ADMINUSER: admin
-  AGUADIR: .flow 
-  AGUAUSER: agua
+  DIR: .flow 
   INSTALLDIR: <INSTALLDIR>
-  USERDIR: <USERDIR>
+  HOMEDIR: <HOMEDIR>
 database:
   DBFILE: db/db.sqlite
   DBTYPE: SQLite
