@@ -1,0 +1,69 @@
+#!/usr/bin/perl -w
+
+=head2
+
+PURPOSE
+
+    1. Listen for RabbitMQ fanout messages sent from Siphon::Broadcast
+    
+    2. Execute received messages of three types:
+        
+        - project: Load/delete project configuration
+    
+    	- system: Execute one or more system commands 
+    
+    	- service: Start/stop/restart upstart daemons
+
+INPUT
+
+	1. FOR MANUAL TESTING, PROVIDE A SUBCOMMAND, E.G.:
+
+		SYSTEM
+
+		/a/bin/daemon/seneschal system --log 4 --json '{"commands":["ls -altr"]}'
+
+		/a/bin/daemon/seneschal system --log 4 --json '{"mode":"system","hostips":[],"commands":["export PERL5LIB=/a/extlib/linux/lib/perl5:/a/extlib/linux/lib/perl5/x86_64-linux-gnu-thread-multi:/a/lib; /a/bin/cli/biorepo"],"hostip":"only-run-on-this-server-matched-by-ip-address"}'
+
+		SERVICE
+
+		/a/bin/daemon/seneschal service --log 4 --json '{"service":"seneschal","subcommand":"status"}'
+
+		PROJECT
+
+		/a/bin/daemon/seneschal project --log 4 --json '{"command":"reload","username":"admin","project":"QC","workflow":"All","confdir":"/a/apps/dnaseq/latest/conf/work/qc"}'
+
+
+		BALANCER 
+
+		/a/bin/daemon/seneschal method --log 4 --json '{"teardown":"","source":"balancer","mode":"doShutdown","teardownfile":"/a/apps/dnaseq/0.0.1/data/sh/teardown.sh","host":"All-45d822c0eb3"}'
+
+OUTPUT
+
+	1. STDOUT OF EXECUTED COMMANDS ALONG WITH RESPECTIVE COMMANDS
+
+	2. SEND DATA TO feedback QUEUE MONITORED BY Siphon::Feedback ON
+
+		MASTER SERVER
+
+=cut
+
+#### EXTERNAL MODULES
+use Getopt::Long;
+use FindBin qw($Bin);
+
+$|++;
+
+#### INTERNAL MODULES
+use Siphon::Seneschal;
+
+#### GET ARGUMENTS
+my @arguments = @ARGV;
+
+#### OBJECT
+my $object      =  Siphon::Seneschal->new({});
+
+#### RUN
+$object->run(\@arguments);
+
+##############################################################
+

@@ -1,0 +1,14 @@
+# Template Upstart and SysVinit configuration file
+
+# Customize location of Template binary (especially for development testing).
+#TEMPLATE="/usr/local/bin/template"
+
+# Use TEMPLATE_OPTS to modify the daemon startup options.
+#TEMPLATE_OPTS="--showlog 4 --printlog 5"
+
+# If you need Template to use a specific environment variable, it can also be specified here.
+
+export PERL5LIB=/a/extlib/linux/lib/perl5:/a/extlib/linux/lib/perl5/x86_64-linux-gnu-thread-multi:/a/lib
+
+export SOME_ENVIRONMENT_VARIABLE=somevalue
+

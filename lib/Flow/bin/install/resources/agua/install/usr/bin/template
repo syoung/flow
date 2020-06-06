@@ -1,0 +1,68 @@
+#!/usr/bin/perl
+
+#### EXTERNAL MODULES
+use Getopt::Long;
+use FindBin qw($Bin);
+
+#### USE LIBS
+use lib "$Bin/../../lib";
+
+my $installdir = $ENV{'installdir'} || "/a";
+
+#### INTERNAL MODULES
+#use lib "/agua/lib";
+use Conf::Yaml;
+use Siphon::Template;
+
+#### VARIABLES
+my $commands     =   [];
+
+#### SET LOG
+my $log         =   2;
+my $printlog    =   4;
+my $logfile        =    "$installdir/log/template.log";
+my $help;
+
+print "ARGV: $ARGV[0]\n";
+
+#### GET ARGUMENTS
+my @arguments = @ARGV;
+
+#### USAGE
+usage() if not @arguments;
+
+GetOptions (
+    'command=s@'    => \$commands,
+
+    'log=i'         => \$log,
+    'printlog=i'    => \$printlog,
+    'logfile=i'     => \$logfile,
+    'help'          => \$help
+) or die "No options specified. Try '--help'\n";
+usage() if defined $help;
+
+my $configfile    =    "$installdir/conf/config.yaml";
+my $conf = Conf::Yaml->new(
+    inputfile   =>    $configfile,
+    backup      =>    1,
+    log         =>  2,
+    printlog    =>  4,
+    logfile     =>    $logfile
+);
+
+my $object      =  Siphon::Template->new({
+    conf        =>  $conf,
+    log         =>    $log,
+    printlog    =>    $printlog,
+    logfile     =>    $logfile
+});
+
+$object->run(\@arguments);
+
+##############################################################
+
+sub usage {
+    print `/usr/bin/env perldoc $0`;
+    exit;
+}
+

@@ -1,0 +1,62 @@
+#!/usr/bin/env perl
+
+#### EXTERNAL MODULES
+use Getopt::Long;
+use FindBin qw($Bin);
+
+#### USE LIBS
+use lib "$Bin/../../lib";
+
+my $installdir;
+    $installdir = $ENV{'installdir'} || "/a";
+BEGIN {
+    unshift(@INC, "$installdir/extlib/lib/perl5");
+    unshift(@INC, "$installdir/extlib/lib/perl5/x86_64-linux-gnu-thread-multi/");
+    unshift(@INC, "$installdir/lib");
+}
+
+#### INTERNAL MODULES
+use lib "$installdir/lib";
+use Conf::Yaml;
+use Siphon::Balancer;
+
+#### SET LOG
+my $mode;
+my $log         =   2;
+my $printlog    =   4;
+my $logfile    =    "$installdir/log/balancer.log";
+my $help;
+GetOptions (
+    'mode=s'        => \$mode,
+    'log=i'         => \$log,
+    'printlog=i'    => \$printlog,
+    'help'          => \$help
+) or die "No options specified. Try '--help'\n";
+usage() if defined $help;
+
+my $configfile    =    "$installdir/conf/config.yaml";
+my $conf = Conf::Yaml->new(
+    inputfile   =>  $configfile,
+    backup      =>  1,
+    log         =>  2,
+    printlog    =>  4,
+    logfile     =>  $logfile
+);
+
+my $object      =  Siphon::Balancer->new({
+    mode        =>  $mode,
+    conf        =>  $conf,
+    log         =>  $log,
+    printlog    =>  $printlog,
+    logfile     =>  $logfile
+});
+
+$object->balance();
+
+##############################################################
+
+sub usage {
+    print `/usr/bin/env perldoc $0`;
+    exit;
+}
+

@@ -1,0 +1,188 @@
+#!/usr/bin/perl -w
+
+BEGIN {
+    my $installdir = $ENV{'installdir'} || "/a";
+    unshift(@INC, "$installdir/extlib/lib/perl5");
+    unshift(@INC, "$installdir/extlib/lib/perl5/x86_64-linux-gnu-thread-multi/");
+    unshift(@INC, "$installdir/lib");
+}
+
+
+use strict;
+
+=head2
+
+APPLICATION     web
+
+PURPOSE
+
+ 1. INSTALL WEB DEPENDENCIES FOR Agua
+	 
+	 
+	 
+ 
+ 2. CREATE THE REQUIRED DIRECTORY STRUCTURE
+    
+INPUT
+
+    1. INSTALLATION DIRECTORY (DEFAULT: /agua)
+    
+    2. www DIRECTORY (DEFAULT: /var/www)
+        
+OUTPUT
+
+    1. REQUIRED DIRECTORY STRUCTURE AND PERMISSIONS
+    
+        FOR PROPER RUNNING OF Agua
+        
+    2. RUNNING APACHE INSTALLATION CONFIGURED FOR Agua
+    
+    3. RUNNING MYSQL INSTALLATION AWAITING MYSQL DATABASE
+    
+        CONFIGURATION WITH CONFIG
+
+USAGE
+
+sudo ./web \
+ [--mode String] \
+ [--installdir String] \
+ [--urlprefix String] \
+ [--userdir String] \
+ [--wwwdir String] \
+ [--wwwuser String] \
+ [--domainname String] \
+ [--logfile String] \
+ [--newlog] \
+ [--log ] \ 
+ [--printlog ] \ 
+ [--help]
+
+ --mode          :  Installation option
+	upgrade 		- 	Link directories and set permissions
+	enableHttps		-	Enable HTTPS and generate CA certificate
+	installExchange	-	Install node.js and rabbitmq exchange
+	enableReboot	-	Fix /etc/fstab to enable reboot of m1.micro instance
+	linkDirectories	-	Create required links for Agua 
+	setStartup		-	Set Agua startup script
+
+ --installdir    :  Target directory to install repository to (e.g., 1.2.0)
+ --urlprefix     :  Prefix to URL (e.g., http://myhost.com/URLPREFIX/agua.html)
+                    (default: agua)
+ --userdir       :  Path to users home directory (default: /nethome)
+ --wwwdir        :  Path to 'WWW' directory (default: /var/www)
+ --wwwuser       :  Name of apache user (default: "www-data")
+ --domainname    :  Domain name to use for CA certificate
+ --logfile       :  Print log to this file
+ --newlog        :  Flag to create new log file and backup old
+ --log       :  Print log output to STDOUT (5 levels of increasing info: 1,2,3,4,5, default: 2, 'warning' and 'critical' info only)
+ --printlog      :  Print log output to logfile (5 levels of increasing info: 1,2,3,4,5, default: 5, all log output) 
+ --help          :  Print help info
+ 
+EXAMPLES
+
+# Install Agua web dependencies
+sudo web --mode install
+
+# Install SSL certs for HTTPS
+sudo web --mode enableHttps
+
+=cut
+
+my $whoami = `whoami`;
+if ( not $whoami =~/^root\s*$/ ) {
+	print "You must be root to run web\n";
+	exit;
+}
+
+#### USE LIB
+use FindBin qw($Bin);
+use lib "$Bin/../../lib";
+
+#### EXTERNAL MODULES
+use Getopt::Long;
+
+#### INTERNAL MODULES
+use Agua::Web;
+
+#### GET OPTIONS
+my $mode        = 	"install";
+my $urlprefix   = 	"agua";
+my $installdir  = 	"$Bin/../..";
+my $userdir     = 	"/nethome";
+my $wwwdir      = 	"/var/www";
+my $wwwuser     = 	"www-data";
+my $logfile     = 	"/tmp/agua-web.log";
+my $tempdir		=	"/tmp";
+my $database;
+my $domainname;
+my $newlog;
+my $log		=	2;
+my $printlog	=	5;
+my $help;
+GetOptions (
+    'mode=s'        =>  \$mode,
+    'urlprefix=s'   =>  \$urlprefix,
+    'installdir=s'  =>  \$installdir,
+    'database=s'    =>  \$database,
+    'domainname=s'  =>  \$domainname,
+    'userdir=s'     =>  \$userdir,
+    'wwwdir=s'      =>  \$wwwdir,
+    'wwwuser=s'     =>  \$wwwuser,
+    'logfile=s'     =>  \$logfile,
+    'tempdir=s'     =>  \$tempdir,
+    'newlog=s'      =>  \$newlog,
+    'log=s'     =>  \$log,
+    'printlog=s'    =>  \$printlog,
+    'help'          =>  \$help
+) or die "No options specified. Try '--help'\n";
+
+#### PRINT HELP IF REQUESTED
+usage() if defined $help;
+
+#### CONFIG
+my $configfile   =    "$Bin/../../conf/config.yaml";
+my $conf = Conf::Yaml->new(
+    memory      =>  0,
+    inputfile   =>  $configfile,
+    backup      =>  1,
+
+    log         =>  $log,
+    printlog    =>  $printlog,
+    logfile     =>  $logfile
+);
+
+#### CHECK IF URL PREFIX EXISTS
+my $urlprefixpath = "$wwwdir/$urlprefix";
+print "web    urlprefix directory already exists: $urlprefix\n" and exit if -d $urlprefixpath;
+
+my $object = Agua::Web->new({
+	urlprefix   =>  $urlprefix,
+	installdir  =>  $installdir,
+	database    =>  $database,
+	domainname  =>  $domainname,
+	userdir     =>  $userdir,
+	wwwdir      =>  $wwwdir,
+	wwwuser     =>  $wwwuser,
+	logfile     =>  $logfile,
+	tempdir     =>  $tempdir,
+	newlog      =>  $newlog,
+
+	conf        =>  $conf,
+	log			=>	$log,
+	printlog    =>  $printlog
+});
+
+#### RUN QUERY
+no strict;
+eval { $object->$mode() };
+if ( $@ ){
+	print "Error: $mode): $@\n";
+}
+print "\nCompleted $0\n";
+
+
+sub usage {
+    print `perldoc $0`;
+    exit;
+}
+    

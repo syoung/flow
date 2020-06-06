@@ -2,8 +2,8 @@ package Flow::Common;
 use Moose::Role;
 use Method::Signatures::Simple;
 
-# use Package::Sync;
 use JSON;
+use Data::Dumper;
 
 =head2
 
@@ -80,6 +80,8 @@ method doProfileInheritance ( $profiles, $profilename ) {
     }
   }
 
+  $self->logDebug( "RETURNING profile", $profile, 1 );
+
   return $profile;
 }
 
@@ -104,39 +106,41 @@ method recurseInheritance ( $profilefield, $inheritedfield ) {
     exit;
   }
 
-  # #### IF THE 
-  # if ( ( $profiletype eq "" or $profiletype eq "HASH" ) and ( $inheritedtype  eq "" or $inheritedtype  eq "HASH" ) {
-  #   $profile->{ $key } = $self->recurseInheritance ( $profile->{ $key }, $inherited->{ $key } ); 
-  # }
-  # elsif ( not defined $profiletype eq "ARRAY" ) {
-  #   my $regex = $profile->{ $key };
-  #   if ( grep( /^$regex$/, @array ) ) {
-              
-  #   }
+  #### IF BOTH ARE ARRAYS, ADD TO PROFILE MISSING ENTRIES 
+  if ( $profiletype eq "HASH" ) {
 
-  # }
-
-
-  # #### OTHERWISE, RECURSE IF THE FIELD IS AN OBJECT
-  # elsif ( ref( $profilefield ) ne "" and ref( $inheritedfield ) ne "" ) {
-
-
-  #   foreach my $key ( keys %$inheritedfield ) {
-  #     $self->logDebug( "key", $key );
-
-  #     if ( not defined $profilefield->{ $key } ) {
-  #       $profilefield->{ $key } =  $inheritedfield->{ $key };
-  #     }
-  #     else {
-  #       $profilefield->{ $key } = $self->recurseInheritance( $profilefield->{ $key }, $inheritedfield->{ $key } );
-  #     }
-  #   }
-  # }
+    foreach my $key ( keys %$inheritedfield ) {
+      $profilefield->{ $key } = $self->recurseInheritance ( $profilefield->{ $key 
+      }, $inheritedfield->{ $key } ); 
+    }
+  }
+  elsif ( $profiletype eq "ARRAY" ) {
+    foreach my $entry ( @$inheritedfield ) {
+      if ( not $self->elementInArray( $profilefield, $entry ) ) {
+        $self->logDebug( "ADDING entry", $entry );
+        push @$profilefield, $entry;
+      }
+    }
+  }
 
   #### OTHERWISE, KEEP THE EXISTING VALUE IN profile
   return $profilefield;
 }
 
+method elementInArray ( $array, $entry ) {
+  $self->logDebug( "array", $array );
+  $self->logDebug( "entry", $entry );
+
+  my $x = Dumper( $entry );
+  foreach my $slot ( @$array ) {
+    my $y = Dumper( $slot );
+    if( $x eq $y ) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
 
 method yamlToData ( $text ) {
   # $self->logDebug( "text", $text );
@@ -258,7 +262,7 @@ method getProfileValue ( $keystring, $profile ) {
   foreach my $key ( @keys ) {
     $hash  = $hash->{$key};
     return undef if not defined $hash;
-    $self->logDebug("hash", $hash);
+    # $self->logDebug("hash", $hash);
   }
 
   return $hash;

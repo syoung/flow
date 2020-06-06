@@ -1,0 +1,14 @@
+# Monitor Upstart and SysVinit configuration file
+
+# Customize location of Monitor binary (especially for development testing).
+#MONITOR="/usr/local/bin/monitor"
+
+# Use MONITOR_OPTS to modify the daemon startup options.
+#MONITOR_OPTS="--showlog 4 --printlog 5"
+
+# If you need Monitor to use a specific environment variable, it can also be specified here.
+
+export PERL5LIB=/a/extlib/linux/lib/perl5:/a/extlib/linux/lib/perl5/x86_64-linux-gnu-thread-multi:/a/lib
+
+export SOME_ENVIRONMENT_VARIABLE=somevalue
+

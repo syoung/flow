@@ -1,0 +1,46 @@
+#!/usr/bin/perl -w
+
+=head2
+
+PURPOSE
+
+    1. Listen for RabbitMQ 'task' queue messages sent by Queuer    
+    
+    2. Send job progress updates (started, completed, error, etc.) 
+    
+        - update.job.status
+
+   3. Save messages to the following database tables
+        
+        queuesample 
+        Overall status of the sample: none, queued, running, completed 
+
+INPUT
+
+    1. FOR MANUAL TESTING, PROVIDE A SUBCOMMAND, E.G.:
+
+
+
+
+=cut
+
+
+#### EXTERNAL MODULES
+use Getopt::Long;
+use FindBin qw($Bin);
+
+$|++;
+
+#### INTERNAL MODULES
+use Siphon::Worker;
+
+#### GET ARGUMENTS
+my @arguments = @ARGV;
+
+#### OBJECT
+my $object      =  Siphon::Worker->new({});
+
+#### RUN
+$object->run(\@arguments);
+
+##############################################################

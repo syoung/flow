@@ -69,8 +69,8 @@ has 'dbtype'    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
 has 'database'  => ( isa => 'Str|Undef', is => 'rw', required => 0 );
 has 'user'      => ( isa => 'Str|Undef', is => 'rw', required => 0 );
 has 'password'  => ( isa => 'Str|Undef', is => 'rw', required => 0 );
-has 'start'		  => ( isa => 'Str', is => 'rw', required => 0 );
-has 'stop'		  => ( isa => 'Str', is => 'rw', required => 0 );
+has 'first'		  => ( isa => 'Str', is => 'rw', required => 0 );
+has 'last'		  => ( isa => 'Str', is => 'rw', required => 0 );
 
 #### STORED LOGISTICS VARIABLES
 has 'owner'	    => ( isa => 'Str|Undef', is => 'rw', required => 0, default => undef );
@@ -108,7 +108,7 @@ has 'value'	    => ( isa => 'Str|Undef', is => 'rw', required => 0 );
 has 'stages'      =>   ( isa => 'ArrayRef', is => 'rw', required => 0 );
 has 'workflows'	 => ( isa => 'ArrayRef[Flow::Workflow]', is => 'rw', default => sub { [] } );
 has 'fields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { 
-	[ 'profiles', 'username', 'database', 'project', 'number', 'workflow', 'owner', 'description', 'notes', 'outputdir', 'field', 'value', 'projfile', 'wkfile', 'outputfile', 'cmdfile', 'start', 'stop', 'ordinal', 'from', 'to', 'status', 'started', 'stopped', 'duration', 'epochqueued', 'epochstarted', 'epochstopped', 'epochduration', 'log', 'printlog', 'scheduler', 'samplestring', 'maxjobs', 'stagenumber', 'format', 'dryrun', 'override', 'force' ] } );
+	[ 'profiles', 'username', 'database', 'project', 'number', 'workflow', 'owner', 'description', 'notes', 'outputdir', 'field', 'value', 'projfile', 'wkfile', 'outputfile', 'cmdfile', 'first', 'last', 'ordinal', 'from', 'to', 'status', 'started', 'stopped', 'duration', 'epochqueued', 'epochstarted', 'epochstopped', 'epochduration', 'log', 'printlog', 'scheduler', 'samplestring', 'maxjobs', 'stagenumber', 'format', 'dryrun', 'override', 'force' ] } );
 has 'logfh'     => ( isa => 'FileHandle', is => 'rw', required => 0 );
 
 has 'conf' 		=> (
@@ -1135,9 +1135,9 @@ method runProject ( $projectname ) {
 	#### SET USERNAME AND OWNER
 	my $username    =   $self->setUsername();
 	my $owner       =   $username;
-	my $start				=		$self->start();
+	my $first				=		$self->first();
 	my $dryrun			=		$self->dryrun();
-	$self->logDebug("start", $start);
+	$self->logDebug("first", $first);
 	$self->logDebug("dryrun", $dryrun);
 
 	#### VERIFY INPUTS
@@ -1165,7 +1165,7 @@ method runProject ( $projectname ) {
 			$workflowhash->{dryrun}		=	$dryrun;
 			
 			$counter++;
-			if ( $start and $counter < $start ) {
+			if ( $first and $counter < $first ) {
 				next;
 			}
 			
@@ -1185,7 +1185,7 @@ method runProject ( $projectname ) {
 					foreach my $workflowhash ( @$workflowhashes ) {
 						print "Doing workflow $counter: ", $workflowhash->{workflow}, "\n";
 						$counter++;
-						if ( $start and $counter < $start ) {
+						if ( $first and $counter < $first ) {
 							next;
 						}
 
@@ -1205,7 +1205,7 @@ method runProject ( $projectname ) {
 				$self->logDebug("DOING _runSampleWorkflow $counter");
 				
 				$counter++;
-				if ( $start and $counter < $start ) {
+				if ( $first and $counter < $first ) {
 					next;
 				}
 
@@ -1657,7 +1657,6 @@ method insertWorkflow ( $project, $wkfile, $workflownumber ) {
 
 
 method runWorkflow ( $projectname, $workflowid ) {
-
 	#### SET USERNAME AND OWNER
 	my $username    =   $self->setUsername();
 	my $owner       =   $username;
@@ -1680,18 +1679,18 @@ method runWorkflow ( $projectname, $workflowid ) {
 	# $self->_getopts();
 	
 	my $dryrun			=		$self->dryrun();
-	my $start				=		$self->start() || 1;
+	my $first				=		$self->first() || 1;
 	$self->logDebug("dryrun", $dryrun);
 	$self->logDebug("username", $username);
 	$self->logDebug("projectname", $projectname);
 	$self->logDebug("workflowname", $workflowname);
-	$self->logDebug("start", $start);
+	$self->logDebug("first", $first);
 	
 	#### SET WORKFLOW HASH
 	my $workflowhash=	$self->getWorkflow( $username, $projectname, $workflowname );	
 	print "Project '$projectname' workflow not found: $workflowname\n" and exit if not defined $workflowhash;
 	$workflowhash->{dryrun}		=	$dryrun;
-	$workflowhash->{start}		=	$start;
+	$workflowhash->{first}		=	$first;
 	$self->logDebug( "workflowhash", $workflowhash, 1 );
 
 	#### GET SAMPLES
@@ -1767,7 +1766,7 @@ method getSampleHash () {
 
 method stageFactory ( $stage ) {
 	my $profilehash = $stage->{profilehash};
-	$self->logDebug( "profilehash", $profilehash );
+	# $self->logDebug( "profilehash", $profilehash );
 
 	my $runtype = $self->getProfileValue( "run:type", $profilehash );
 	$runtype = "Shell" if not $runtype;
@@ -1781,7 +1780,6 @@ method stageFactory ( $stage ) {
 
 	my $hosttype = $self->getHostType( $hostname, $virtual );
 	$self->logDebug( "hosttype", $hosttype );
-
 
 #### MONITOR IS CREATED BY Monitor::Factory BASED ON
 #### VALUE OF run:type:scheduler
@@ -1851,19 +1849,26 @@ method setStages ( $workflowhash, $samplehash ) {
   
   #### SET STAGES
   my $stages = $self->table()->getStagesByWorkflow( $workflowhash );
-  $self->logDebug("# stages", scalar(@$stages) );
+  $self->logDebug("Total stages", scalar(@$stages) );
 
   #### GET STAGE PARAMETERS FOR THESE STAGES
   $stages = $self->setStageParameters( $stages, $workflowhash );
   
   #### SET START AND STOP
-  my ( $start, $stop ) = $self->setStartStop( $stages, $workflowhash );
-  $self->logDebug( "start", $start );
-  $self->logDebug( "stop", $stop );
+  my $first = $workflowhash->{ first };
+  my $last  = $workflowhash->{ last };
+  $self->logDebug( "first", $first );
+  $self->logDebug( "last", $last );
 
-  if ( not defined $start or not defined $stop ) {
-    print "Skipping stages for workflow: $workflowname\n";
-    return [];    
+  if ( not defined $first or not defined $last ) {
+		( $first, $last ) = $self->setFirstLast( $stages );
+  }
+  $self->logDebug( "first", $first );
+  $self->logDebug( "last", $last );
+
+  if ( not defined $first or not defined $last ) {
+    print "First or last stage missing. Skipping stages for workflow: $workflowname\n";
+    return [];
   }
   
   #### GET FILEROOT & USERHOME
@@ -1884,13 +1889,12 @@ method setStages ( $workflowhash, $samplehash ) {
 
   #### LOAD STAGE OBJECT FOR EACH STAGE TO BE RUN
   my $stageobjects = [];
-  for (  my $counter = $start - 1; $counter < $stop - 1; $counter++ ) {
+  for (  my $counter = $first - 1; $counter < $last; $counter++ ) {
     my $stage = $$stages[$counter];
     $self->logNote( "stage", $stage );
     
     my $stagenumber  =  $stage->{appnumber};
     my $stagename    =  $stage->{appname};    
-    # my $stagenumber = $counter + 1;
     my $successor    =  $stage->{successor};
     $self->logDebug( "successor", $successor ) if defined $successor and $successor ne "";
     
@@ -1940,81 +1944,78 @@ method setStageParameters ($stages, $workflowhash) {
   #$self->logDebug("stages", $stages);
   #$self->logDebug("data", $workflowhash);
   
-  my $start = $workflowhash->{start} || 1;
-  $start--;
-  for ( my $i = $start; $i < @$stages; $i++ ) {
+  my $first = $workflowhash->{first} || 1;
+  $first--;
+  for ( my $i = $first; $i < @$stages; $i++ ) {
     my $keys = ["username", "projectname", "workflowname", "appname", "appnumber"];
     my $where = $self->table()->db()->where($$stages[$i], $keys);
     my $query = qq{SELECT * FROM stageparameter
 $where AND paramtype='input'
 ORDER BY ordinal};
-    $self->logDebug("query", $query);
+    # $self->logDebug("query", $query);
 
     my $stageparameters = $self->table()->db()->queryhasharray($query);
-    $self->logNote("stageparameters", $stageparameters);
+    # $self->logNote("stageparameters", $stageparameters);
     $$stages[$i]->{stageparameters} = $stageparameters;
   }
   
   return $stages;
 }
 
-method setStartStop ($stages, $json) {
+method setFirstLast ( $stages ) {
   $self->logDebug("# stages", scalar(@$stages));
   $self->logDebug("stages is empty") and return if not scalar(@$stages);
 
-  my $start = $self->start();
-  my $stop = $self->stop();
-  $self->logDebug("self->start", $self->start());
-  $self->logDebug("self->stop", $self->stop());
+  my $first = $self->first();
+  my $last = $self->last();
+  $self->logDebug("self->first", $self->first());
+  $self->logDebug("self->last", $self->last());
 
   #### SET DEFAULTS  
-  $start  =  1 if not defined $start;
-  $stop   =  scalar(@$stages) + 1 if not defined $stop;
-  $self->logDebug("start", $start);
-  $self->logDebug("stop", $stop);
+  $first  =  1 if not defined $first;
+  $last   =  scalar(@$stages) if not defined $last;
+  $self->logDebug("first", $first);
+  $self->logDebug("last", $last);
 
-  $self->logDebug("start not defined") and return if not defined $start;
-  $self->logDebug("start is non-numeric: $start") and return if $start !~ /^\d+$/;
+  $self->logDebug("first not defined") and return if not defined $first;
+  $self->logDebug("first is non-numeric: $first") and return if $first !~ /^\d+$/;
 
-  if ( $start > @$stages ) {
-    print "Stage start ($start) is greater than the number of stages: " . scalar(@$stages) . "\n";
-    $self->logDebug("Stage start ($start) is greater than the number of stages");
+  if ( $first > @$stages ) {
+    print "Stage first ($first) is greater than the number of stages: " . scalar(@$stages) . "\n";
+    $self->logDebug("Stage first ($first) is greater than the number of stages");
     return;
 
   }
 
-  if ( defined $stop and $stop ne '' ) {
-    if ( $stop !~ /^\d+$/ ) {
-      $self->logDebug("Stage stop is non-numeric: $stop");
+  if ( defined $last and $last ne '' ) {
+    if ( $last !~ /^\d+$/ ) {
+      $self->logDebug("Stage last is non-numeric: $last");
       return;
     }
-    elsif ( $stop > scalar(@$stages) + 1 ) {
-      print "Stage stop ($stop) is greater than total stages: " . scalar(@$stages) . "\n";
-      $self->logDebug("Stage stop ($stop) is greater than total stages: " . scalar(@$stages) );
+    elsif ( $last > scalar(@$stages) ) {
+      print "Stage last ($last) is greater than total stages: " . scalar( @$stages ) . "\n";
+      $self->logDebug("Stage last ($last) is greater than total stages: " . scalar(@$stages) );
       return;
     }
   }
   else {
-    $stop = scalar(@$stages) + 1;
+    $last = scalar( @$stages );
   }
   
-  if ( $start > $stop ) {
-    print "Stage start ($start) is greater than stage stop ($stop)\n";
-    $self->logDebug("start ($start) is greater than stop ($stop)");
+  if ( $first > $last ) {
+    print "Stage first ($first) is greater than stage last ($last)\n";
+    $self->logDebug("first ($first) is greater than last ($last)");
     return;
   }
 
-  $self->logNote("$$ Setting start: $start");  
-  $self->logNote("$$ Setting stop: $stop");
+  $self->logNote("$$ Setting first: $first");  
+  $self->logNote("$$ Setting last: $last");
   
-  $self->start($start);
-  $self->stop($stop);
+  $self->first( $first );
+  $self->last( $last );
   
-  return ($start, $stop);
+  return ( $first, $last );
 }
-
-
-
 
 #### MOVE TO runStages
 
@@ -2053,10 +2054,7 @@ method runStages ( $stages, $dryrun ) {
     $self->logDebug("no. stages", scalar(@$stages));
     $self->logDebug( "dryrun", $dryrun );
 
-    # $self->logDebug( "DEBUG EXIT" ) and exit;
-
     # #### SET EXCHANGE   
-
     # my $exchange = $self->conf()->getKey("core:EXCHANGE");
     # $self->logDebug("exchange", $exchange);
     
@@ -2184,19 +2182,33 @@ method launchVM ( $stageobject ) {
   my $virtualtype = $self->getProfileValue( "virtual:type", $profilehash );
   $self->logDebug( "virtualtype", $virtualtype );
   my $virtual = $self->setVirtual( $virtualtype );
-  $self->logDebug( "self->virtual()", $self->virtual() );
+  # $self->logDebug( "self->virtual()", $self->virtual() );
 
-  my ( $instancename, $instanceid, $ipaddress ); 
-  # my ( $instancename, $instanceid, $ipaddress ) = $virtual->getNodeinfo( $stageobject );
-  # $self->logDebug( "ipaddress", $ipaddress );
+  $stageobject = $virtual->getNodeInfo( $stageobject );
 
-  # if ( not defined $ipaddress ) {
+  #### GET VALUES UPDATED BY getProfileValue
+  $profilehash      =    $stageobject->{ profilehash };
+  my $ipaddress = $self->getProfileValue( "instance:ipaddress", $profilehash );
+  $self->logDebug( "ipaddress", $ipaddress );
+
+  #### LAUNCH NODE IF NO IPADDRESS FOUND
+  if ( not defined $ipaddress ) {
   	$self->logDebug( "DOING virtual->launchNode( stageobject )" );
-		( $instanceid, $instancename, $ipaddress ) = $virtual->launchNode( $stageobject );
-  # }
+		$stageobject = $virtual->launchNode( $stageobject );
+  	$ipaddress = $self->getProfileValue( "instance:ipaddress", $stageobject->{ profilehash } );
+  	$self->logDebug( "ipaddress", $ipaddress );
+  }
+
+  #### GET VALUES UPDATED BY launchNode
+  $profilehash      =    $stageobject->{ profilehash };
+  # $self->logDebug( "profilehash", $profilehash );
+
+  my $instanceid = $self->getProfileValue( "instance:id", $profilehash );
+  my $instancename = $self->getProfileValue( "instance:name", $profilehash );
 
 	$self->logDebug("instanceid", $instanceid);
 	$self->logDebug("instancename", $instancename);
+	$self->logDebug( "ipaddress", $ipaddress );
 
 	if ( not defined $instanceid 
 		or not defined $instancename
@@ -2205,13 +2217,6 @@ method launchVM ( $stageobject ) {
 		print "Failed to launch or detect VM\n";
 		return undef;
 	}
-
-	#### ADD VARIABLES TO profilehash
-	$stageobject->profilehash()->{ instance } = {};
-	$stageobject->profilehash()->{ instance }->{ id } = $instanceid;
-	$stageobject->profilehash()->{ instance }->{ name } = $instancename;
-	$stageobject->profilehash()->{ instance }->{ ipaddress } = $ipaddress;  
-  $self->logDebug( "profilehash", $profilehash, 1 );
 
 
 #### INSERT INSTANCE DETAILS INTO DATABASE
@@ -2231,7 +2236,7 @@ method launchVM ( $stageobject ) {
   
 #   PRIMARY KEY ( username, projectname, workflowname, stagename )
 # );
-
+	# $self->logDebug( "RETURNING stageobject", $stageobject, 1 );
 
 	return $stageobject;	
 } 
@@ -2300,7 +2305,7 @@ method _runWorkflow ( $hosttype, $runtype, $workflowhash, $samplehash ) {
 	$self->logDebug( "hosttype", $hosttype );
 	$self->logDebug( "runtype", $runtype );
 
-	$workflowhash->{start}		=	$workflowhash->{start} || 1;
+	$workflowhash->{first}		=	$workflowhash->{first} || 1;
 	$workflowhash->{samplehash}	=	$samplehash;
 
 	#### LOG INFO		
@@ -2325,7 +2330,7 @@ method _runWorkflow ( $hosttype, $runtype, $workflowhash, $samplehash ) {
 
 method _runSampleWorkflow ( $hosttype, $runtype, $workflowhash, $sampledata ) {
 	$self->logDebug("workflowhash", $workflowhash);
-	$workflowhash->{start}		=	1;
+	$workflowhash->{first}		=	1;
 	$workflowhash->{workflow}	=	$workflowhash->{name};
 	$workflowhash->{workflownumber}	=	$workflowhash->{number};
 
@@ -2574,8 +2579,8 @@ method _showStage ($workflowhash, $samplehash, $stagenumber) {
     my $workflow = $workflowhash->{name};
     $self->logDebug("workflow", $workflow);
     
-	$workflowhash->{start}		=	$stagenumber;
-	$workflowhash->{stop}		=	$stagenumber + 1;
+	$workflowhash->{first}		=	$stagenumber;
+	$workflowhash->{last}		=	$stagenumber + 1;
 	$workflowhash->{workflow}	=	$workflowhash->{name};
 	$workflowhash->{workflownumber}	=	$workflowhash->{number};
 	$workflowhash->{samplehash}	=	$samplehash;
@@ -2667,22 +2672,30 @@ method _showStage ($workflowhash, $samplehash, $stagenumber) {
   print "\n$command\n\n";
 }
 
-method runStage ( $project, $workflow, $stagenumber ) {
+method runStage ( $projectname, $workflowid, $stagenumber ) {
 	$self->logDebug("");
 
 	#### SET USERNAME AND OWNER
 	my $username    =   $self->setUsername();
 	my $owner       =   $username;
 
+	#### GET WORKFLOW NAME IF workflownumber PROVIDED
+	my $workflowname   = $workflowid;
+	if ( $workflowid =~ /^\d+$/ ) {
+		my $workflownumber = $workflowid;
+		$workflowname = $self->table()->getWorkflowByNumber( $username, $projectname, $workflownumber );
+	}
+	$self->logDebug("workflowname", $workflowname);
+
 	$self->logDebug("username", $username);
-	$self->logDebug("project", $project);
-	$self->logDebug("workflow", $workflow);
+	$self->logDebug("projectname", $projectname);
+	$self->logDebug("workflowname", $workflowname);
 	$self->logDebug("stagenumber", $stagenumber);
 
 	#### VERIFY INPUTS
 	print "username not defined\n" and exit if not defined $username;
-	print "project not defined\n" and exit if not defined $project;
-	print "workflow not defined\n" and exit if not defined $workflow;
+	print "projectname not defined\n" and exit if not defined $projectname;
+	print "workflowname not defined\n" and exit if not defined $workflowname;
 	print "stagenumber not defined\n" and exit if not defined $stagenumber;
 	
 	#### GET OPTS (E.G., WORKFLOW)
@@ -2701,71 +2714,80 @@ method runStage ( $project, $workflow, $stagenumber ) {
 	$self->logDebug("samplehash", $samplehash);
 
 	#### GET WORKFLOW
-	my $workflowhash=	$self->getWorkflow($username, $project, $workflow);
+	my $workflowhash=	$self->getWorkflow($username, $projectname, $workflowname);
+	print "Workflow not found: $workflowname\n" and exit if not defined $workflowhash;
+
+	#### SET FIRST/last
+	$workflowhash->{ first } = $stagenumber;
+	$workflowhash->{ last } = $stagenumber;
+
 	$self->logDebug("workflowhash", $workflowhash);
 	
 	#### SET DRY RUN
 	$workflowhash->{dryrun}		=	$dryrun;
 
-	print "Information for workflow not found: $workflow\n" and exit if not defined $workflowhash;
-
 	#### GET SAMPLES
-	my $sampledata	=	$self->getSampleData($username, $project);
-	$self->logDebug("Count samplesdata", scalar(@$sampledata)) if defined $sampledata;
-	$self->logDebug("samplesdata[0]", $$sampledata[0]) if defined $sampledata and scalar(@$sampledata) > 0;
-	#print "Number of samples: ", scalar(@$sampledata), "\n" if defined $sampledata;
+	my $sampledata	=	$self->getSampleData( $username, $projectname );
+	print "Number of samples: ", scalar( @$sampledata ), "\n" if defined $sampledata;
 
-	if ( defined $samplestring ) {
-		my $samplehash		=	$self->sampleStringToHash($samplestring);
-        my $success	=	$self->_runStage($workflowhash, $samplehash, $stagenumber);
-		$self->logDebug("success", $success);
-	}
-	elsif ( defined $sampledata ) {
-
-        my $override	=	$self->override();
-        $self->logDebug("override", $override);
-        my $overridehash		=	undef;
-        $overridehash			=	$self->sampleStringToHash($override) if defined $override;
-        $self->logDebug("overridehash", $overridehash);
-        
-        foreach my $samplehash ( @$sampledata ) {
-            $samplehash = $self->overrideHash($overridehash, $samplehash);
-            $self->logDebug("Running stage with samplehash", $samplehash);
-            print "Running stage $stagenumber using sample: ", $samplehash->{sample}, "\n";
-            my $success	=	$self->_runStage($workflowhash, $samplehash, $stagenumber);
-            $self->logDebug("success", $success);
-        }
+	#### SET STAGES
+	my $stages = [];
+	if ( not $sampledata ) {
+		#### GET SAMPLE STRING IF PROVIDED, OK IF EMPTY
+		my $samplehash = $self->getSampleHash();	
+		$stages = $self->setStages( $workflowhash, $samplehash )
 	}
 	else {
-        my $success	=	$self->_runStage($workflowhash, $samplehash, $stagenumber);
-        $self->logDebug("success", $success);
+		foreach my $samplehash ( @$sampledata ) {
+			$self->logDebug("Running workflow with samplehash", $samplehash);
+
+			my $samplestages = $self->setStages( $workflowhash, $samplehash );		
+			push ( @$stages, @$samplestages ) if @$samplestages;
+		}
 	}
+
+	# $self->logDebug( "stages", $stages );
+	$self->logDebug( "# stages", scalar( @$stages ) );
+
+	my $success = $self->runStages( $stages, $dryrun );
+	$self->logDebug( "success", $success );
+
+
+	#### TO DO: ADD --samplestring
+
+
+	# #### SET STAGE
+	# my $sampledata	=	$self->getSampleData($username, $projectname);
+	# $self->logDebug("Count samplesdata", scalar(@$sampledata)) if defined $sampledata;
+	# $self->logDebug("samplesdata[0]", $$sampledata[0]) if defined $sampledata and scalar(@$sampledata) > 0;
+
+	# if ( defined $samplestring ) {
+	# 	my $samplehash		=	$self->sampleStringToHash($samplestring);
+ #        my $success	=	$self->_runStage($workflowhash, $samplehash, $stagenumber);
+	# 	$self->logDebug("success", $success);
+	# }
+	# elsif ( defined $sampledata ) {
+
+ #        my $override	=	$self->override();
+ #        $self->logDebug("override", $override);
+ #        my $overridehash		=	undef;
+ #        $overridehash			=	$self->sampleStringToHash($override) if defined $override;
+ #        $self->logDebug("overridehash", $overridehash);
+        
+ #        foreach my $samplehash ( @$sampledata ) {
+ #            $samplehash = $self->overrideHash($overridehash, $samplehash);
+ #            $self->logDebug("Running stage with samplehash", $samplehash);
+ #            print "Running stage $stagenumber using sample: ", $samplehash->{sample}, "\n";
+ #            my $success	=	$self->_runStage($workflowhash, $samplehash, $stagenumber);
+ #            $self->logDebug("success", $success);
+ #        }
+	# }
+	# else {
+ #        my $success	=	$self->_runStage($workflowhash, $samplehash, $stagenumber);
+ #        $self->logDebug("success", $success);
+	# }
 }
 
-method _runStage ($workflowhash, $samplehash, $stagenumber) {
-	$self->logDebug("workflowhash", $workflowhash);
-	$self->logDebug("stagenumber", $stagenumber);
-
-	$workflowhash->{start}		=	$stagenumber;
-	$workflowhash->{stop}		=	$stagenumber + 1;
-	$workflowhash->{samplehash}	=	$samplehash;
-	$workflowhash->{force}	    =	$self->force();
-
-	#### LOG INFO		
-	$workflowhash->{logtype}	=	$self->logtype();
-	$workflowhash->{logfile}	=	$self->logfile();
-	$workflowhash->{log}			=	$self->log();
-	$workflowhash->{printlog}	=	$self->printlog();
-
-	$workflowhash->{conf}			=	$self->conf();
-	$workflowhash->{table}		=	$self->table();
-	$workflowhash->{scheduler}=	$self->scheduler();
-	
-	require Engine::Workflow;
-	my $object	= Engine::Workflow->new($workflowhash);
-	#$self->logDebug("object", $object);
-	return $object->executeWorkflow($workflowhash);
-}
 
 #### LOAD
 method loadScript {

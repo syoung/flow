@@ -1,0 +1,22 @@
+#!/usr/bin/perl
+
+#### EXTERNAL MODULES
+use Getopt::Long;
+use FindBin qw($Bin);
+
+$|++;
+
+#### INTERNAL MODULES
+use Siphon::Broadcast;
+
+#### GET ARGUMENTS
+my @arguments = @ARGV;
+
+#### OBJECT
+my $object      =  Siphon::Broadcast->new({});
+
+#### RUN
+$object->run(\@arguments);
+
+##############################################################
+
