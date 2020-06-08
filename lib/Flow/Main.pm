@@ -1375,6 +1375,16 @@ method addWorkflow ( $projectname, $wkfile ) {
 	my $profilename = $options->{ profilename };
 	$self->logDebug( "profilename", $profilename );
 
+	#### DEFAULT profilefile LOCATION
+	if ( not defined $profilefile ) {
+		my ( $directory ) = $wkfile =~ /^(.*?)\/*[^\/]+$/;
+		if ( $directory eq "" ) {
+			$directory = ".";
+		}
+		$profilefile = "$directory/profiles.yml";
+	}
+	$self->logDebug( "profilefile", $profilefile );
+
 	my $projecthash	=	$self->_getProjectHash($username, $projectname);
 	$self->logDebug("projecthash", $projecthash);
 	print "Can't find project: $projectname (username: $username)\n" and exit if not defined $projecthash;

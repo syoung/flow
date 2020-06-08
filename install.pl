@@ -55,13 +55,13 @@ chdir( $INSTALLDIR );
 updateSubmodules ();
 
 ## 2. CHECKOUT OS-SPECIFIC BRANCH OF perl SUBMODULE
-checkoutPerlBranch( $os );
+checkoutPerlBranch( $os, $INSTALLDIR );
 
 ## 3. COPY DB TEMPLATE IF NOT EXISTS
 copyDbFile();
 
 ## 4. COPY CONFIG FILE FROM TEMPLATE IF NOT EXISTS
-copyConfigFile( $os );
+copyConfigFile( $os, $INSTALLDIR );
 
 ## 5. SET envars FILE FROM perl AND exchange
 setEnvarsFile( $INSTALLDIR );
@@ -75,22 +75,21 @@ sub setEnvarsFile {
   my $INSTALLDIR = shift;
 
   my $envarsfile = "$INSTALLDIR/envars";
-  my $appname = "FLOW";
-  my $appdir = $appname . "_HOME";
-  my $commands = [
-    "#!/bin/bash",
-    "",
-    "export $appdir=$INSTALLDIR",
-    "export PATH=$INSTALLDIR/bin:\$PATH",
-    "export PERL5LIB=$INSTALLDIR/lib:\$PERL5LIB"
-  ];
-  my $contents = join "\n", @$commands;
+  my $appname    = "FLOW";
+  my $appdir     = $appname . "_HOME";
+  my $contents   = qq{#!/bin/bash
 
-  my $externals = [ "ext/perl", "ext/exchange" ];
+export $appdir=$INSTALLDIR,
+export PATH=$INSTALLDIR/bin:\$PATH,
+export PERL5LIB=$INSTALLDIR/lib:\$PERL5LIB
+};
+
+  my $externals  = [ "ext/perl", "ext/exchange" ];
 
   foreach my $external ( @$externals ) {
     print "Adding envars for external: $external\n";  
-    my $envarfile = "$INSTALLDIR/envars";
+    my $envarfile = "$INSTALLDIR/$external/envars";
+    # print "Loading environment variables from file: $envarfile\n";
     if ( -f $envarfile ) {
       my $envars    = getFileContents( $envarfile );
       # print "envars: $envars\n";
@@ -146,6 +145,7 @@ sub copyDbFile {
 
 sub copyConfigFile {
   my $os     = shift;
+  my $INSTALLDIR = shift;
 
   my $configtemplate = "$INSTALLDIR/conf/config.yml.template";
   my $configfile = "$INSTALLDIR/conf/config.yml";
@@ -155,7 +155,7 @@ sub copyConfigFile {
   else {
     print "Copying $configtemplate to $configfile\n";
     my $contents = getFileContents( $configtemplate );
-    $contents = replaceFields( $os, $contents );
+    $contents = replaceFields( $os, $contents, $INSTALLDIR );
     printFile( $configfile, $contents );
   }  
 }
@@ -187,14 +187,14 @@ sub getFileContents {
 sub replaceFields {
   my $os       = shift;
   my $contents = shift;
+  my $INSTALLDIR = shift;
 
   my $homedir = getHomeDir( $os );
 
   #### REPLACE FIELDS
   $contents =~ s/<INSTALLDIR>/$INSTALLDIR/;
-  $contents =~ s/<USERDIR>/$userdir/;
-  print "FINAL CONTENTS: $contents\n";
-
+  $contents =~ s/<HOMEDIR>/$homedir/;
+  
   return $contents;
 }
 
@@ -216,7 +216,8 @@ sub checkoutPerlBranch {
   my $os = shift;
   my $branch = undef;
   my $archname = undef;
-  
+  my $INSTALLDIR = shift;
+
   print "\n";
   if ( $os eq "darwin" ) {
     print "Loading embedded perl branch for OSX:\n";
@@ -227,9 +228,9 @@ sub checkoutPerlBranch {
     print "Loading embedded perl branch for Linux:\n";
 
     my $osname=`/usr/bin/perl -V  | grep "archname="`;
-    print "osname: $osname\n";
+    # print "osname: $osname\n";
     ($archname) = $osname =~ /archname=([^\-]+)/;
-    print "archname: $archname\n";
+    # print "archname: $archname\n";
 
     if ( -f "/etc/lsb-release" ) {
       print "Getting Ubuntu version...\n";
@@ -280,7 +281,7 @@ sub checkoutPerlBranch {
     print "perl branch: $branch-$archname\n";
 
     # use FindBin qw($Bin);
-    my $command = "cd $INSTALLDIR/perl; git checkout $branch-$archname";
+    my $command = "cd $INSTALLDIR/ext/perl; git checkout $branch-$archname";
     print "$command\n";
     `$command`;
   }
