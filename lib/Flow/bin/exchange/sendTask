@@ -1,12 +1,4 @@
-#!/usr/bin/perl -w
-
-BEGIN {
-    my $installdir = $ENV{'installdir'} || "/a";
-    unshift(@INC, "$installdir/extlib/lib/perl5");
-    unshift(@INC, "$installdir/extlib/lib/perl5/x86_64-linux-gnu-thread-multi/");
-    unshift(@INC, "$installdir/lib");
-}
-
+#!/usr/bin/env perl
 
 
 =head2

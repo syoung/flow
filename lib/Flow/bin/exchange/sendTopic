@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 BEGIN {
     my $installdir = $ENV{'installdir'} || "/a";
@@ -39,21 +39,20 @@ use AnyEvent;
 use Net::RabbitFoot;
 use JSON;
 
-#### USE LIBRARY
-use lib "$Bin/../../lib";	
-BEGIN {
-    my $installdir = $ENV{'installdir'} || "/a";
-    unshift(@INC, "$installdir/extlib");
-    unshift(@INC, "$installdir/lib");
-}
-
 my $installdir 	=	 $ENV{'installdir'} || "/a";
 
 #### INTERNAL MODULES
 use Conf::Yaml;
 use Exchange;
 
-my $configfile	=	"$installdir/conf/config.yaml";
+#### SET CONF FILE
+my $installdir  =   $ENV{'FLOW_HOME'};
+if ( not defined $installdir ) {
+  print "Can't find FLOW_HOME environment variable. Exiting\n";
+  exit;
+}
+my $HOME = $ENV{'HOME'};
+my $configfile  =   "$installdir/conf/config.yml";
 
 my $conf = Conf::Yaml->new(
     memory      =>  1,
@@ -61,13 +60,13 @@ my $conf = Conf::Yaml->new(
 );
 
 my $message		=	"";
-my $host		=	$conf->getKey("queue:host", undef) || "localhost";
-my $port		=	$conf->getKey("queue:port", undef) || 5672; 
-my $user		=	$conf->getKey("queue:user", undef) || "guest";
-my $pass		=	$conf->getKey("queue:pass", undef) || "guest";
-my $vhost		=	$conf->getKey("queue:vhost", undef) || "/";
-my $keys		=	$conf->getKey("queue:topickeys", undef) || "test.exchange.topic";
-my $exchange	=	$conf->getKey("queue:topicexchange", undef) || "test.exchange";
+my $host		=	$conf->getKey( "queue:host" ) || "localhost";
+my $port		=	$conf->getKey( "queue:port" ) || 5672; 
+my $user		=	$conf->getKey( "queue:user" ) || "guest";
+my $pass		=	$conf->getKey( "queue:pass" ) || "guest";
+my $vhost		=	$conf->getKey( "queue:vhost" ) || "/";
+my $keys		=	$conf->getKey( "queue:topickeys" ) || "test.exchange.topic";
+my $exchange	=	$conf->getKey( "queue:topicexchange" ) || "test.exchange";
 
 my $log			=	2;
 my $printlog	=	2;

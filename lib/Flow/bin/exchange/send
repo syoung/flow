@@ -15,10 +15,10 @@ use Net::RabbitMQ ;
 }
 
 ### BEGIN CONFIGURABLE PARAMETERS ######################################
-my $qserver = q{localhost} ;
+my $qserver = q{/} ;
 my %qparms = () ;
 
-my $qname   = q{gravity.checks} ;
+my $qname   = q{amq.topic} ;
 my $message = q{Test injection} ;
 ### NO CONFIGURABLE PARAMETERS BELOW THIS LINE #########################
 
@@ -27,7 +27,7 @@ my $mq      = Net::RabbitMQ->new() ;
 my $chanID  = nextchan() ;
 $message   .= " ".scalar(localtime) ;
 
-print STDERR qq{Will try to send message "$message" through channel $chanID\n} ;
+print STDERR qq{Will try to send message "$message" through channel $chanID to queue $qname\n} ;
 
 $mq->connect($qserver, \%qparms) ;
 $mq->channel_open($chanID) ;

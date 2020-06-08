@@ -1,0 +1,12 @@
+#!/bin/bash
+
+export FLOW_HOME=/flow
+export PATH=/flow/bin:$PATH
+export PERL5LIB=/flow/lib:$PERL5LIB
+export PATH=/flow/ext/perl/bin:$PATH 
+export PERL5LIB=/flow/ext/perl/lib/perl5:$PERL5LIB
+export PERL5LIB=/flow/ext/perl/lib/perl5/x86_64-linux-thread-multi:$PERL5LIB
+export PERL5LIB=/flow/ext/perl/lib/perl5/site_perl/5.26.3:$PERL5LIB
+export PERL5LIB=/flow/ext/perl/lib/perl5/site_perl/5.26.3/x86_64-linux-thread-multi:$PERL5LIB
+export PATH=/flow/ext/exchange/erlang/23.0/bin:$PATH
+export PATH=/flow/ext/exchange/rabbitmq/rabbitmq_server-3.8.4/sbin:$PATH

@@ -63,7 +63,7 @@ copyDbFile();
 ## 4. COPY CONFIG FILE FROM TEMPLATE IF NOT EXISTS
 copyConfigFile( $os );
 
-## 5. RUN envars.sh TO SET ~/envars FILE
+## 5. SET envars FILE FROM perl AND exchange
 setEnvarsFile( $INSTALLDIR );
 
 ## 6. INSTALL repo
@@ -85,12 +85,18 @@ sub setEnvarsFile {
     "export PERL5LIB=$INSTALLDIR/lib:\$PERL5LIB"
   ];
   my $contents = join "\n", @$commands;
-  my $perlenvarfile = "$INSTALLDIR/perl/envars";
-  if ( -f $perlenvarfile ) {
-    my $perlenvars    = getFileContents( $perlenvarfile );
-    print "Perlenvars: $perlenvars\n";
-    $contents .= "\n";
-    $contents .= $perlenvars;
+
+  my $externals = [ "ext/perl", "ext/exchange" ];
+
+  foreach my $external ( @$externals ) {
+    print "Adding envars for external: $external\n";  
+    my $envarfile = "$INSTALLDIR/envars";
+    if ( -f $envarfile ) {
+      my $envars    = getFileContents( $envarfile );
+      # print "envars: $envars\n";
+      $contents .= "\n";
+      $contents .= $envars;
+    }
   }
 
   $contents  =~ s/<INSTALLDIR>/$INSTALLDIR/g;    
