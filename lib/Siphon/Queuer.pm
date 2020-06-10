@@ -4,7 +4,7 @@ use MooseX::Declare;
 
 PURPOSE
 
-	Run tasks on worker nodes using task queue
+	Run tasks on worker nodes using work queue (up to preset job count limit)
 
 	Use queues to communicate between master and nodes:
 	

@@ -1,0 +1,32 @@
+An example configuration file for RabbitMQ that switches on request logging, increases the statistics interval to 10 seconds and explicitly sets some other relevant parameters to their default values, would look like this:
+
+listeners.tcp.default = 5672
+
+collect_statistics_interval = 10000
+
+# management.load_definitions = /path/to/exported/definitions.json
+
+management.tcp.port = 15672
+management.tcp.ip   = 0.0.0.0
+
+management.ssl.port       = 15671
+management.ssl.ip         = 0.0.0.0
+management.ssl.cacertfile = /path/to/ca_certificate.pem
+management.ssl.certfile   = /path/to/server_certificate.pem
+management.ssl.keyfile    = /path/to/server_key.pem
+
+management.http_log_dir = /path/to/rabbit/logs/http
+
+management.rates_mode = basic
+
+# Configure how long aggregated data (such as message rates and queue
+# lengths) is retained.
+# Your can use 'minute', 'hour' and 'day' keys or integer key (in seconds)
+management.sample_retention_policies.global.minute    = 5
+management.sample_retention_policies.global.hour  = 60
+management.sample_retention_policies.global.day = 1200
+
+management.sample_retention_policies.basic.minute   = 5
+management.sample_retention_policies.basic.hour = 60
+
+management.sample_retention_policies.detailed.10 = 5

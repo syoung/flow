@@ -35,8 +35,6 @@ class Siphon::Listener with (Logger, Exchange, Agua::Common::Database, Agua::Com
 use Getopt::Long;
 Getopt::Long::Configure(qw(no_ignore_case bundling pass_through));
 
-#####////}}}}}
-
 {
 
 # Integers
@@ -57,10 +55,15 @@ has 'rabbitmqctl'	=> ( isa => 'Str|Undef', is => 'rw', default	=> "/usr/sbin/rab
 # Objects
 has 'modules'	=> ( isa => 'ArrayRef|Undef', is => 'rw', lazy	=>	1, builder	=>	"setModules");
 has 'conf'		=> ( isa => 'Conf::Yaml', is => 'rw', required	=>	0 );
-has 'synapse'	=> ( isa => 'Synapse', is => 'rw', lazy	=>	1, builder	=>	"setSynapse" );
+
+# has 'synapse'	=> ( isa => 'Synapse', is => 'rw', lazy	=>	1, builder	=>	"setSynapse" );
+
 has 'db'		=> ( isa => 'Agua::DBase::MySQL', is => 'rw', lazy	=>	1,	builder	=>	"setDbh" );
+
 has 'jsonparser'=> ( isa => 'JSON', is => 'rw', lazy	=>	1, builder	=>	"setParser" );
+
 has 'virtual'	=> ( isa => 'Any', is => 'rw', lazy	=>	1, builder	=>	"setVirtual" );
+
 has 'duplicate'	=> ( isa => 'HashRef|Undef', is => 'rw');
 has 'channel'	=> ( isa => 'Any', is => 'rw', required	=>	0 );
 
@@ -90,7 +93,7 @@ method initialise ($args) {
 method run ($args) {
 
 	my $installdir	=	$ENV{'installdir'} || "/a";
-	my $logfile     =   "$installdir/log/seneschal.log";
+	my $logfile     =   "$installdir/log/listener.log";
 	my $json 		=	undef;
 	my $help;
     {
@@ -137,7 +140,7 @@ method listen {
 
 #### TASKS
 method receiveTask ($taskqueues, $handler) {
-	my $exchange = "gravity.checks";
+	# my $exchange = "gravity.checks";
 	#$self->logDebug("taskqueues", $taskqueues);
 
 	my $host		=	$self->host() || $self->conf()->getKey("queue:host", undef);

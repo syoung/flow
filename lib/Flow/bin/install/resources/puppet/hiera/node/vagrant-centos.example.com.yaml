@@ -1,4 +1,0 @@
----
-username: vagrant
-mysql:
-  daemon: "mysqld"

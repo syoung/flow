@@ -5,8 +5,6 @@ use warnings;
 
 class Siphon::Worker with (Logger, Exchange, Agua::Common::Database, Agua::Common::Timer) {
 
-#####////}}}}}
-
 # Integers
 has 'log'	=>  ( isa => 'Int', is => 'rw', default => 4 );
 has 'printlog'	=>  ( isa => 'Int', is => 'rw', default => 5 );
@@ -36,8 +34,6 @@ use Test::More;
 use Agua::Workflow;
 use TryCatch;
 use Getopt::Long;
-
-#####////}}}}}
 
 method BUILD ($args) {
 	$self->initialise($args);	
@@ -166,21 +162,21 @@ method handleTask ($json) {
 	$self->logDebug("$$ json", $json);
 	my $data = $self->parser()->decode($json);
 
-my $sleeping = 500;
-$self->logDebug("sleeping", $sleeping);
-sleep($sleeping);
+# my $sleeping = 500;
+# $self->logDebug("sleeping", $sleeping);
+# sleep($sleeping);
 
-	#### CHECK `
-	my $sendtype = $data->{sendtype};
+	#### CHECK sendtype
+	my $sendtype = $data->{ sendtype };
 	$self->logDebug("sendtype", $sendtype);
 	return 0 if $sendtype ne "task";
 
-	$data->{start}		=  	1;
-	$data->{conf}		=   $self->conf();
-	$data->{log}		=   $self->log();
-	$data->{logfile}	=   $self->logfile();
-	$data->{printlog}	=   $self->printlog();	
-	$data->{worker}		=	$self;
+	$data->{ start }		=  	1;
+	$data->{ conf }		  =   $self->conf();
+	$data->{ log }		  =   $self->log();
+	$data->{ logfile }	=   $self->logfile();
+	$data->{ printlog }	=   $self->printlog();	
+	$data->{ worker }		=	  $self;
 
 	$self->setDbh() if not defined $self->db();
 
@@ -197,7 +193,7 @@ sleep($sleeping);
 	}
 
 	#### SET STATUS TO completed
-	$self->conf()->setKey("agua", "STATUS", "completed");
+	$self->conf()->setKey( "workflow:status", "completed");
 
 	#### SHUT DOWN TASK LISTENER IF SPECIFIED IN config.yaml
 	$self->verifyShutdown();
@@ -211,7 +207,7 @@ method sendTask ($queuename, $data) {
 
 	my $processid	=	$$;
 	#$self->logDebug("processid", $processid);
-	$data->{processid}	=	$processid;
+	$data->{ processid }	=	$processid;
 
 	#### ADD UNIQUE IDENTIFIERS
 	$data	=	$self->addTaskIdentifiers($data);
@@ -250,7 +246,7 @@ method sendTask ($queuename, $data) {
 		}
 	);
 
-	print " [x] Sent TASK on host $host queuename '$queuename': $data->{mode}: $message\n";
+	print " [x] Sent TASK on host $host queuename '$queuename': $data->{ mode }: $message\n";
 
 	#$self->logDebug("disconnecting connection");
 	#$connection->disconnect();

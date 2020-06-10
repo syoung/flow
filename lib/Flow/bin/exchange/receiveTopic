@@ -1,13 +1,4 @@
-#!/usr/bin/perl -w
-
-BEGIN {
-    my $installdir = $ENV{'installdir'} || "/a";
-    unshift(@INC, "$installdir/extlib/lib/perl5");
-    unshift(@INC, "$installdir/extlib/lib/perl5/x86_64-linux-gnu-thread-multi/");
-    unshift(@INC, "$installdir/lib");
-}
-
-
+#!/usr/bin/env perl
 
 =head2
 
@@ -45,35 +36,31 @@ use FindBin qw($Bin);
 use AnyEvent;
 use Net::RabbitFoot;
 
-#### USE LIBRARY
-use lib "$Bin/../../lib";	
-BEGIN {
-    my $installdir = $ENV{'installdir'} || "/a";
-    unshift(@INC, "$installdir/extlib");
-    unshift(@INC, "$installdir/lib");
-}
-
-my $installdir 	=	 $ENV{'installdir'} || "/a";
-
 #### INTERNAL MODULES
 use Conf::Yaml;
-use Exchange;
+#use Exchange;
 
-my $configfile	=	"$installdir/conf/config.yaml";
+#### SET CONF FILE
+my $installdir  =   $ENV{'FLOW_HOME'};
+if ( not defined $installdir ) {
+  print "Can't find FLOW_HOME environment variable. Exiting\n";
+  exit;
+}
 
+my $configfile  =   "$installdir/conf/config.yml";
 my $conf = Conf::Yaml->new(
     memory      =>  1,
     inputfile   =>  $configfile,
 );
 
 my $message		=	"";
-my $host		=	$conf->getKey("queue:host", undef) || "localhost";
-my $port		=	$conf->getKey("queue:port", undef) || 5672; 
-my $user		=	$conf->getKey("queue:user", undef) || "guest";
-my $pass		=	$conf->getKey("queue:pass", undef) || "guest";
-my $vhost		=	$conf->getKey("queue:vhost", undef) || "/";
-my $keys		=	$conf->getKey("queue:topickeys", undef) || "test.exchange.topic";
-my $exchange	=	$conf->getKey("queue:topicexchange", undef) || "test.exchange";
+my $host		=	$conf->getKey( " queue:host" ) || "localhost";
+my $port		=	$conf->getKey( " queue:port" ) || 5672; 
+my $user		=	$conf->getKey( " queue:user" ) || "guest";
+my $pass		=	$conf->getKey( " queue:pass" ) || "guest";
+my $vhost		=	$conf->getKey( " queue:vhost" ) || "/";
+my $keys		=	$conf->getKey( " queue:topickeys" ) || "test.exchange.topic";
+my $exchange	=	$conf->getKey( " queue:topicexchange" ) || "test.exchange";
 my $help;
 
 GetOptions (
@@ -103,16 +90,14 @@ my $conn = Net::RabbitFoot->new()->load_xml_spec()->connect(
 
 my $channel = $conn->open_channel();
 
-$channel->declare_exchange(
-	exchange => $exchange,
-	type => 'topic',
-);
+# $channel->declare_exchange(
+# 	exchange => $exchange,
+# 	type => 'topic',
+# );
 
 my $result = $channel->declare_queue(exclusive => 1);
 
-
 my $queuename = $result->{method_frame}->{queue};
-
 
 for my $routingkey ( @$keys ) {
 	$channel->bind_queue(

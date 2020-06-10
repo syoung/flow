@@ -1,12 +1,5 @@
 #!/usr/bin/env perl
 
-BEGIN {
-    my $installdir = $ENV{'installdir'} || "/a";
-    unshift(@INC, "$installdir/extlib/lib/perl5");
-    unshift(@INC, "$installdir/extlib/lib/perl5/x86_64-linux-gnu-thread-multi/");
-    unshift(@INC, "$installdir/lib");
-}
-
 =head2
 
 APPLICATION 	sendTopic
@@ -39,11 +32,9 @@ use AnyEvent;
 use Net::RabbitFoot;
 use JSON;
 
-my $installdir 	=	 $ENV{'installdir'} || "/a";
-
 #### INTERNAL MODULES
 use Conf::Yaml;
-use Exchange;
+# use Exchange;
 
 #### SET CONF FILE
 my $installdir  =   $ENV{'FLOW_HOME'};
@@ -51,9 +42,8 @@ if ( not defined $installdir ) {
   print "Can't find FLOW_HOME environment variable. Exiting\n";
   exit;
 }
-my $HOME = $ENV{'HOME'};
-my $configfile  =   "$installdir/conf/config.yml";
 
+my $configfile  =   "$installdir/conf/config.yml";
 my $conf = Conf::Yaml->new(
     memory      =>  1,
     inputfile   =>  $configfile,
@@ -75,7 +65,7 @@ my $help;
 GetOptions (
     'exchange=s'	=> \$exchange,
     'message=s'		=> \$message,
-    'keys=s'		=> \$keys,
+    'keys=s'		=> \$keys,        # routing keys
 
     'host=s'		=> \$host,
     'port=s'		=> \$port,
@@ -107,10 +97,10 @@ my $conn = Net::RabbitFoot->new()->load_xml_spec()->connect(
 
 my $channel = $conn->open_channel();
 
-$channel->declare_exchange(
-    exchange => $exchange,
-    type => 'topic',
-);
+# $channel->declare_exchange(
+#     exchange => $exchange,
+#     type => 'topic',
+# );
 
 $channel->publish(
     exchange => $exchange,

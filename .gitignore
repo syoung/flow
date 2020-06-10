@@ -8,6 +8,8 @@ db.sqlite
 config.yml
 envars
 .pem
+*.dump
+
 #### INCLUDED FILES
 !apps/.dummy
 !log/.dummy

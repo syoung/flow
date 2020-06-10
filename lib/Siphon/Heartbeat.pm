@@ -37,10 +37,12 @@ has 'printlog'	=> ( isa => 'Int', 		is => 'rw', default	=> 	2	);
 has 'sleep'		=>  ( isa => 'Int', is => 'rw', default => 60 );
 
 # Strings
+has 'exchange'	=> ( isa => 'Str|Undef', is => 'rw', default	=>	"inbound.host.status" );
 has 'database'	=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
 has 'command'	=> ( isa => 'Str|Undef', is => 'rw'	);
 has 'logfile'	=> ( isa => 'Str|Undef', is => 'rw'	);
 has 'arch'		=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
+
 
 # Objects
 has 'conf'		=> ( isa => 'Conf::Yaml', is => 'rw', required	=>	0 );
@@ -113,7 +115,7 @@ method heartbeat {
 	#$self->logDebug("memory", $memory);
 		
 	my $data	=	{
-		queue		=>	"update.host.status",
+		queue		=>	$self->queue(),
 		host		=>	$host,
 		ipaddress	=>	$ipaddress,
 		cpu			=>	$cpu,
@@ -127,7 +129,7 @@ method heartbeat {
 	#$self->logDebug("data", $data);
 
 	try {
-		$self->sendTask("update.host.status", $data);
+		$self->sendTask($self->queue(), $data);
 	}
 	catch {
 		$self->logDebug("FAILED TO SEND HEARTBEAT", $data);

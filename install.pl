@@ -79,8 +79,8 @@ sub setEnvarsFile {
   my $appdir     = $appname . "_HOME";
   my $contents   = qq{#!/bin/bash
 
-export $appdir=$INSTALLDIR,
-export PATH=$INSTALLDIR/bin:\$PATH,
+export $appdir=$INSTALLDIR
+export PATH=$INSTALLDIR/bin:\$PATH
 export PERL5LIB=$INSTALLDIR/lib:\$PERL5LIB
 };
 
