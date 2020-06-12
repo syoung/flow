@@ -334,8 +334,8 @@ method updateIps {
 	my $internalip	=	$self->getInternalIp();
 	my $externalip	=	$self->getExternalIp();
 
-	$self->conf()->setKey("queue:selfinternalip", $internalip);
-	$self->conf()->setKey("queue:selfexternalip", $externalip);
+	$self->conf()->setKey( "mq:selfinternalip", $internalip);
+	$self->conf()->setKey( "mq:selfexternalip", $externalip);
 }
 
 method getObject ($modules, $data) {
@@ -435,7 +435,7 @@ method setParser {
 #    
 #    my $exchange	=	"chat";
 #	my $channelid	=	1;
-#	my $host		=	$self->host() || $self->conf()->getKey("queue:host", undef);
+#	my $host		=	$self->host() || $self->conf()->getKey( "mq:host", undef);
 #	$self->logDebug("host", $host);
 #
 #	#### 1. CONNECTION

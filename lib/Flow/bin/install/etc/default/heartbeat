@@ -8,7 +8,7 @@
 
 # If you need Monitor to use a specific environment variable, it can also be specified here.
 
-export PERL5LIB=/a/extlib/linux/lib/perl5:/a/extlib/linux/lib/perl5/x86_64-linux-gnu-thread-multi:/a/lib
+#export PERL5LIB=/a/extlib/linux/lib/perl5:/a/extlib/linux/lib/perl5/x86_64-linux-gnu-thread-multi:/a/lib
 
 export SOME_ENVIRONMENT_VARIABLE=somevalue
 

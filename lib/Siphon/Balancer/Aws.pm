@@ -1712,13 +1712,13 @@ method sendTopic ($data, $key) {
   $self->logDebug("data", $data);
   #$self->logDebug("key", $key);
 
-  my $exchange  =  $self->conf()->getKey("queue:topicexchange", undef);
+  my $exchange  =  $self->conf()->getKey( "mq:topicexchange", undef);
   #$self->logDebug("exchange", $exchange);
 
-  my $host    =  $self->host() || $self->conf()->getKey("queue:host", undef);
-  my $user    =   $self->user() || $self->conf()->getKey("queue:user", undef);
-  my $pass    =  $self->pass() || $self->conf()->getKey("queue:pass", undef);
-  my $vhost    =  $self->vhost() || $self->conf()->getKey("queue:vhost", undef);
+  my $host    =  $self->host() || $self->conf()->getKey( "mq:host", undef);
+  my $user    =   $self->user() || $self->conf()->getKey( "mq:user", undef);
+  my $pass    =  $self->pass() || $self->conf()->getKey( "mq:pass", undef);
+  my $vhost    =  $self->vhost() || $self->conf()->getKey( "mq:vhost", undef);
   $self->logNote("host", $host);
   $self->logNote("user", $user);
   $self->logNote("pass", $pass);
@@ -1826,11 +1826,11 @@ method updateHeartbeat ($data) {
 }
 
 method setConfigMaxJobs ($queuename, $value) {
-  return $self->conf()->setKey("queue:maxjobs", $queuename, $value);
+  return $self->conf()->setKey( "mq:maxjobs:$queuename:$value" ) || $self->conf()->setKey( "mq:maxjobs:default" );
 }
 
 method getConfigMaxJobs ($queuename) {
-  return $self->conf()->getKey("queue:maxjobs", $queuename);
+  return $self->conf()->getKey( "mq:maxjobs", $queuename);
 }
 
 method pushTask ($task) {
@@ -1903,7 +1903,7 @@ method getQueueTasks {
 
 method getQueueTaskList {
 
-  my $vhost    =  $self->conf()->getKey("queue:vhost", undef);
+  my $vhost    =  $self->conf()->getKey( "mq:vhost", undef);
   #$self->logDebug("vhost", $vho st);
 
   my $rabbitmqctl  =  $self->rabbitmqctl();

@@ -1,12 +1,5 @@
 #!/usr/bin/env perl
 
-BEGIN {
-    my $installdir = $ENV{'installdir'} || "/a";
-    unshift(@INC, "$installdir/extlib/lib/perl5");
-    unshift(@INC, "$installdir/extlib/lib/perl5/x86_64-linux-gnu-thread-multi/");
-    unshift(@INC, "$installdir/lib");
-}
-
 #### EXTERNAL MODULES
 use Getopt::Long;
 use FindBin qw($Bin);
@@ -14,18 +7,13 @@ use FindBin qw($Bin);
 #### USE LIBS
 use lib "$Bin/../../lib";
 
-my $installdir;
-BEGIN {
-    $installdir = $ENV{'installdir'} || "/a";
-    unshift(@INC, "$installdir/extlib/lib/perl5");
-    unshift(@INC, "$installdir/extlib/lib/perl5/x86_64-linux-gnu-thread-multi/");
-    unshift(@INC, "$installdir/lib");
-}
 
 #### INTERNAL MODULES
 #use lib "/agua/lib";
 use Conf::Yaml;
 use Siphon::Queuer;
+
+my $installdir = $ENV{FLOW_HOME};
 
 #### SET LOG
 my $mode;
@@ -41,7 +29,7 @@ GetOptions (
 ) or die "No options specified. Try '--help'\n";
 usage() if defined $help;
 
-my $configfile	=	"$installdir/conf/config.yaml";
+my $configfile	=	"$installdir/conf/config.yml";
 my $conf = Conf::Yaml->new(
     inputfile	=>	$configfile,
     backup		=>	1,

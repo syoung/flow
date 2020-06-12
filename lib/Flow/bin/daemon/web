@@ -33,7 +33,7 @@ GetOptions (
 ) or die "No options specified. Try '--help'\n";
 usage() if defined $help;
 
-my $configfile	=	"$installdir/conf/config.yaml";
+my $configfile	=	"$installdir/conf/config.yml";
 my $conf = Conf::Yaml->new(
     inputfile	=>	$configfile,
     backup		=>	1,

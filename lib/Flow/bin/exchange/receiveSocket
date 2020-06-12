@@ -62,7 +62,7 @@ BEGIN {
 use Conf::Yaml;
 
 my $installdir 	=	 $ENV{'installdir'} || "/a";
-my $configfile	=	"$installdir/conf/config.yaml";
+my $configfile	=	"$installdir/conf/config.yml";
 my $host		=	'localhost';
 my $port		=	5672;
 my $user		=	'guest';	

@@ -53,7 +53,7 @@ BEGIN {
 use Conf::Yaml;
 
 my $installdir 	=	 $ENV{'installdir'} || "/a";
-my $configfile	=	"$installdir/conf/config.yaml";
+my $configfile	=	"$installdir/conf/config.yml";
 my $exchange	=	"chat";
 my $message		=	"";
 my $host		=	"localhost";

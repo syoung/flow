@@ -62,7 +62,7 @@ use Logic::Shepherd::Queue;
 my $arguments;
 @$arguments = @ARGV;
 
-my $configfile   =	"$installdir/conf/config.yaml";
+my $configfile   =	"$installdir/conf/config.yml";
 my $message;
 my $max			=	0;
 my $sleep		=	10;

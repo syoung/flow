@@ -208,7 +208,7 @@ sub init {
 #######################################################################################
 
 #### GET CONF
-my $configfile = "$Bin/../../conf/config.yaml";
+my $configfile = "$Bin/../../conf/config.yml";
 my $conf = Conf::Yaml->new({
 	inputfile 	=> 	$configfile,
 	log		=>	2,
@@ -218,7 +218,7 @@ my $logfile	=	"$Bin/../../log/agua-ops.log";
 $conf->logfile($logfile);
 
 #### SET DEFAULT OPTIONS
-$options->{conffile} 	= 	"$Bin/../../conf/config.yaml" if not defined $options->{conffile};
+$options->{conffile} 	= 	"$Bin/../../conf/config.yml" if not defined $options->{conffile};
 $options->{logfile} 	= 	$logfile if not defined $options->{logfile};
 $options->{log}		=	2 if not defined $options->{log};
 $options->{printlog}	=	2 if not defined $options->{printlog};

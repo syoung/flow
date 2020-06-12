@@ -50,13 +50,13 @@ my $conf = Conf::Yaml->new(
 );
 
 my $message		=	"";
-my $host		=	$conf->getKey( "queue:host" ) || "localhost";
-my $port		=	$conf->getKey( "queue:port" ) || 5672; 
-my $user		=	$conf->getKey( "queue:user" ) || "guest";
-my $pass		=	$conf->getKey( "queue:pass" ) || "guest";
-my $vhost		=	$conf->getKey( "queue:vhost" ) || "/";
-my $keys		=	$conf->getKey( "queue:topickeys" ) || "test.exchange.topic";
-my $exchange	=	$conf->getKey( "queue:topicexchange" ) || "test.exchange";
+my $host		=	$conf->getKey( "mq:host" ) || "localhost";
+my $port		=	$conf->getKey( "mq:port" ) || 5672; 
+my $user		=	$conf->getKey( "mq:user" ) || "guest";
+my $pass		=	$conf->getKey( "mq:pass" ) || "guest";
+my $vhost		=	$conf->getKey( "mq:vhost" ) || "/";
+my $keys		=	$conf->getKey( "mq:topickeys" ) || "test.exchange.topic";
+my $exchange	=	$conf->getKey( "mq:topicexchange" ) || "test.exchange";
 
 my $log			=	2;
 my $printlog	=	2;

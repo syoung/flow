@@ -9,6 +9,7 @@ config.yml
 envars
 .pem
 *.dump
+.DS_Store
 
 #### INCLUDED FILES
 !apps/.dummy

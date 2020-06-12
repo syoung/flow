@@ -1,9 +1,6 @@
 package Exchange;
 use Moose::Role;
 use Method::Signatures::Simple;
-#use Method::Manual::MethodModifiers;
-
-####////}}}}
 
 use JSON;
 use Data::Dumper;
@@ -68,11 +65,11 @@ method sendFanout ($exchange, $data) {
 	$self->logDebug("exchange", $exchange);
 	# $self->logDebug("data", $data);
 	
-	my $host	=	$self->host() || $self->conf()->getKey("queue:host", undef) || "localhost";
-	my $port	=	$self->port() || $self->conf()->getKey("queue:port", undef) || 5672;
-	my $user	= 	$self->user() || $self->conf()->getKey("queue:user", undef) || "guest";
-	my $pass	=	$self->pass() || $self->conf()->getKey("queue:pass", undef) || "guest";
-	my $vhost	=	$self->vhost() || $self->conf()->getKey("queue:vhost", undef) || "/";
+	my $host	=	$self->host() || $self->conf()->getKey( "mq:host", undef) || "localhost";
+	my $port	=	$self->port() || $self->conf()->getKey( "mq:port", undef) || 5672;
+	my $user	= 	$self->user() || $self->conf()->getKey( "mq:user", undef) || "guest";
+	my $pass	=	$self->pass() || $self->conf()->getKey( "mq:pass", undef) || "guest";
+	my $vhost	=	$self->vhost() || $self->conf()->getKey( "mq:vhost", undef) || "/";
 
 	my $parser 		= 	$self->parser();
 	my $json 		=	$parser->encode($data);
@@ -132,12 +129,12 @@ method receiveFanout ($exchangename, $handler) {
 	$self->logDebug("handler", $handler);
     $|++;
 
-	my $host	=	$self->host() || $self->conf()->getKey("queue:host", undef) || "localhost";
-	my $port	=	$self->port() || $self->conf()->getKey("queue:port", undef) || 5672;
-	my $user	= 	$self->user() || $self->conf()->getKey("queue:user", undef) || "guest";
-	my $pass	=	$self->pass() || $self->conf()->getKey("queue:pass", undef) || "guest";
-	my $vhost	=	$self->vhost() || $self->conf()->getKey("queue:vhost", undef) || "/";
-	my $routingkey = 	$self->conf()->getKey("queue:broadcast", undef) || "broadcast";
+	my $host	=	$self->host() || $self->conf()->getKey( "mq:host", undef) || "localhost";
+	my $port	=	$self->port() || $self->conf()->getKey( "mq:port", undef) || 5672;
+	my $user	= 	$self->user() || $self->conf()->getKey( "mq:user", undef) || "guest";
+	my $pass	=	$self->pass() || $self->conf()->getKey( "mq:pass", undef) || "guest";
+	my $vhost	=	$self->vhost() || $self->conf()->getKey( "mq:vhost", undef) || "/";
+	my $routingkey = 	$self->conf()->getKey( "mq:broadcast", undef) || "broadcast";
 	$self->logDebug("routingkey", $routingkey);
 
 	my $connection      = Net::RabbitMQ->new();
@@ -212,8 +209,8 @@ method sendData ($data) {
 	#### CONNECTION
 	my $connection		=	$self->newSocketConnection($data);
 	my $channel 		=	$connection->open_channel();
-	my $exchange		=	$self->conf()->getKey("queue:exchange", undef);
-	my $exchangetype	=	$self->conf()->getKey("queue:exchangetype", undef);
+	my $exchange		=	$self->conf()->getKey( "mq:exchange", undef);
+	my $exchangetype	=	$self->conf()->getKey( "mq:exchangetype", undef);
 	#$self->logDebug("$$    exchange", $exchange);
 	#$self->logDebug("$$    exchangetype", $exchangetype);
 
@@ -232,7 +229,7 @@ method sendData ($data) {
 		body => $json,
 	);
 
-	my $host = $data->{host} || $self->conf()->getKey("queue:host", undef);
+	my $host = $data->{host} || $self->conf()->getKey( "mq:host", undef);
 	print "[*]   $$   [$host|$exchange|$exchangetype] Sent message: ", substr($json, 0, 1500), "\n";
 	
 	$connection->close();
@@ -249,8 +246,8 @@ method receiveSocket ($data) {
 	my $channel = $connection->open_channel();
 	
 	#### GET EXCHANGE INFO
-	my $exchange		=	$self->conf()->getKey("queue:exchange", undef);
-	my $exchangetype	=	$self->conf()->getKey("queue:exchangetype", undef);
+	my $exchange		=	$self->conf()->getKey( "mq:exchange", undef);
+	my $exchangetype	=	$self->conf()->getKey( "mq:exchangetype", undef);
 	$self->logDebug("exchange", $exchange);
 	$self->logDebug("exchangetype", $exchangetype);
 
@@ -330,8 +327,8 @@ method getConnection {
 	#$self->logDebug("BEFORE channel", $channel);
 
 	#### GET EXCHANGE INFO
-	my $exchange		=	$self->conf()->getKey("queue:exchange", undef);
-	my $exchangetype	=	$self->conf()->getKey("queue:exchangetype", undef);
+	my $exchange		=	$self->conf()->getKey( "mq:exchange", undef);
+	my $exchangetype	=	$self->conf()->getKey( "mq:exchangetype", undef);
 
 	$exchangetype = "fanout";
 	$self->logDebug("exchange", $exchange);
@@ -381,10 +378,10 @@ method getConnection {
 }
 
 method newConnection {
-	my $host		=	$self->host() ? $self->host() : $self->conf()->getKey("queue:host", undef);
-	my $user		= 	$self->user() ? $self->user() : $self->conf()->getKey("queue:user", undef);
-	my $password	=	$self->pass() ? $self->pass() : $self->conf()->getKey("queue:pass", undef);
-	my $vhost		=	$self->vhost() ? $self->vhost() : $self->conf()->getKey("queue:vhost", undef);
+	my $host		=	$self->host() ? $self->host() : $self->conf()->getKey( "mq:host" );
+	my $user		= 	$self->user() ? $self->user() : $self->conf()->getKey( "mq:user" );
+	my $password	=	$self->pass() ? $self->pass() : $self->conf()->getKey( "mq:pass" );
+	my $vhost		=	$self->vhost() ? $self->vhost() : $self->conf()->getKey( "mq:vhost" );
 	
 	$self->logDebug("host", $host);
 	$self->logDebug("user", $user);
@@ -398,11 +395,12 @@ method newConnection {
 	$connection->connect(
 		$host,
 		{
-			port 		=>	5672,
-			host		=>	$host,
-			user 		=>	$user,
-			password 	=>	$password,
-			vhost		=>	$vhost
+			port 				=>	5672,
+			host				=>	$host,
+			user 				=>	$user,
+			password 		=>	$password,
+			vhost				=>	$vhost,
+			channel_max => 2047
 		}
 	);
 	$self->logDebug("connection", $connection);
@@ -417,10 +415,10 @@ method sendTask ($queuename, $data) {
 
     $|++;
 
-	my $host		=	$self->host() ? $self->host() : $self->conf()->getKey("queue:host", undef);
-	my $user		= 	$self->user() ? $self->user() : $self->conf()->getKey("queue:user", undef);
-	my $password	=	$self->pass() ? $self->pass() : $self->conf()->getKey("queue:pass", undef);
-	my $vhost		=	$self->vhost() ? $self->vhost() : $self->conf()->getKey("queue:vhost", undef);
+	my $host		=	$self->host() ? $self->host() : $self->conf()->getKey( "mq:host" );
+	my $user		= 	$self->user() ? $self->user() : $self->conf()->getKey( "mq:user" );
+	my $password	=	$self->pass() ? $self->pass() : $self->conf()->getKey( "mq:pass" );
+	my $vhost		=	$self->vhost() ? $self->vhost() : $self->conf()->getKey( "mq:vhost" );
 
 	$self->logDebug("host", $host);
 	$self->logDebug("user", $user);
@@ -485,10 +483,10 @@ method receiveTask ($queuename, $handler) {
 
 	#### NB: (RECEIVER) QUEUENAME = ROUTING_KEY (SENDER)
 
-	my $host		=	$self->host() ? $self->host() : $self->conf()->getKey("queue:host", undef);
-	my $user		= 	$self->user() ? $self->user() : $self->conf()->getKey("queue:user", undef);
-	my $password	=	$self->pass() ? $self->pass() : $self->conf()->getKey("queue:pass", undef);
-	my $vhost		=	$self->vhost() ? $self->vhost() : $self->conf()->getKey("queue:vhost", undef);
+	my $host		=	$self->host() ? $self->host() : $self->conf()->getKey( "mq:host", undef);
+	my $user		= 	$self->user() ? $self->user() : $self->conf()->getKey( "mq:user", undef);
+	my $password	=	$self->pass() ? $self->pass() : $self->conf()->getKey( "mq:pass", undef);
+	my $vhost		=	$self->vhost() ? $self->vhost() : $self->conf()->getKey( "mq:vhost", undef);
 	
 	# $host = "localhost";
 

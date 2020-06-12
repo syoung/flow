@@ -7,7 +7,9 @@ use FindBin qw($Bin);
 #### USE LIBS
 use lib "$Bin/../../lib";
 
-my $installdir = $ENV{'installdir'} || "/tmp";
+my $installdir = $ENV{'FLOW_HOME'};
+print "Environment variable not defined: FLOW_HOME\n" and exit if not defined $installdir;
+print "FLOW_HOME: $installdir\n";
 
 #### INTERNAL MODULES
 use Conf::Yaml;
@@ -27,7 +29,7 @@ GetOptions (
 ) or die "No options specified. Try '--help'\n";
 usage() if defined $help;
 
-my $configfile	=	"$installdir/conf/config.yaml";
+my $configfile	=	"$installdir/conf/config.yml";
 my $conf = Conf::Yaml->new(
     inputfile	=>	$configfile,
     backup		=>	1,

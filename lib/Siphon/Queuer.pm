@@ -23,11 +23,21 @@ PURPOSE
 use strict;
 use warnings;
 
-class Siphon::Queuer with (Siphon::Common, Logger, Exchange, Agua::Common::Database, Agua::Common::Timer, Agua::Common::Project, Agua::Common::Stage, Agua::Common::Workflow, Agua::Common::Util) {
+class Siphon::Queuer with (Siphon::Common, Util::Logger, Util::Timer, Exchange) {
 
-#####////}}}}}
+# class Siphon::Queuer with (Siphon::Common, Logger, Exchange, Agua::Common::Database, Agua::Common::Timer, Agua::Common::Project, Agua::Common::Stage, Agua::Common::Workflow, Agua::Common::Util) {
 
-{
+#### EXTERNAL MODULES
+use FindBin qw($Bin);
+use Test::More;
+use POSIX qw(ceil floor);
+
+#### INTERNAL MODULES
+#use Virtual::Openstack;
+# use Synapse;
+use Time::Local;
+# use Virtual;
+use Table::Main;
 
 # Integers
 has 'log'	=>  ( isa => 'Int', is => 'rw', default => 2 );
@@ -49,26 +59,31 @@ has 'rabbitmqctl'	=> ( isa => 'Str|Undef', is => 'rw', default	=> "/usr/sbin/rab
 has 'modules'	=> ( isa => 'ArrayRef|Undef', is => 'rw', lazy	=>	1, builder	=>	"setModules");
 has 'conf'		=> ( isa => 'Conf::Yaml', is => 'rw', required	=>	0 );
 has 'synapse'	=> ( isa => 'Synapse', is => 'rw', lazy	=>	1, builder	=>	"setSynapse" );
-has 'db'		=> ( isa => 'Agua::DBase::MySQL', is => 'rw', lazy	=>	1,	builder	=>	"setDbh" );
-has 'jsonparser'=> ( isa => 'JSON', is => 'rw', lazy	=>	1, builder	=>	"setParser" );
-has 'virtual'	=> ( isa => 'Any', is => 'rw', lazy	=>	1, builder	=>	"setVirtual" );
-has 'duplicate'	=> ( isa => 'HashRef|Undef', is => 'rw');
-has 'channel'	=> ( isa => 'Any', is => 'rw', required	=>	0 );
 
+has 'jsonparser'=> ( isa => 'JSON', is => 'rw', lazy	=>	1, builder	=>	"setParser" );
+
+has 'table'		=>	(
+	is 			=>	'rw',
+	isa 		=>	'Table::Main',
+	lazy		=>	1,
+	builder		=>	"setTable"
+);
+
+method setTable () {
+  my $table = Table::Main->new({
+    conf      =>  $self->conf(),
+    log       =>  $self->log(),
+    printlog  =>  $self->printlog(),
+    logfile   =>  $self->logfile()
+  });
+
+  $self->table($table); 
 }
 
-#### EXTERNAL MODULES
-use FindBin qw($Bin);
-use Test::More;
-use POSIX qw(ceil floor);
 
-#### INTERNAL MODULES
-#use Virtual::Openstack;
-use Synapse;
-use Time::Local;
-use Virtual;
-
-#####////}}}}}
+# has 'virtual'	=> ( isa => 'Any', is => 'rw', lazy	=>	1, builder	=>	"setVirtual" );
+# has 'duplicate'	=> ( isa => 'HashRef|Undef', is => 'rw');
+# has 'channel'	=> ( isa => 'Any', is => 'rw', required	=>	0 );
 
 method BUILD ($args) {
 	$self->initialise($args);	
@@ -80,7 +95,7 @@ method initialise ($args) {
 }
 
 method manage {
-	my $virtualtype	=	$self->conf()->getKey("agua", "VIRTUALTYPE");
+	my $virtualtype	=	$self->conf()->getKey("core:VIRTUALTYPE");
 	$self->logDebug("virtualtype", $virtualtype);
 	
 	if ( $virtualtype eq "openstack" ) {
@@ -93,7 +108,7 @@ method manage {
 
 method manageAws {
 	while ( 1 ) {
-		my $username	=	$self->conf()->getKey("agua", "ADMINUSER");
+		my $username	=	$self->conf()->getKey("core:USER");
 		$self->logDebug("username", $username);
 
 		#### GET PROJECTS
@@ -104,15 +119,16 @@ method manageAws {
 			$self->logDebug("project", $project);
 
 			#### GET WORKFLOWS
-			my $workflows	=	$self->getWorkflowsByProject({
-				name		=>	$project,
+			my $workflows	=	$self->table()->getWorkflowsByProject({
+				projectname		=>	$project,
 				username	=>	$username
 			});
 			$self->logDebug("workflows", $workflows);
 			next if not defined $workflows or not @$workflows;
+
 			print "Queuer::manageAws    project $project workflows:\n";
 			foreach my $workflow ( @$workflows ) {
-				print "Queuer::manageAws    $project [$workflow->{number}] $workflow->{name}\n";
+				print "Queuer::manageAws    $project [$workflow->{workflownumber}] $workflow->{workflowname}\n";
 			}
 			
 			### MAINTAIN QUEUES
@@ -146,7 +162,7 @@ method manageOpenstack {
 	
 				#### GET WORKFLOWS
 				my $workflows	=	$self->getWorkflowsByProject({
-					name		=>	$project,
+					projectname		=>	$project,
 					username	=>	$username
 				});
 				$self->logDebug("workflows", $workflows);
@@ -170,13 +186,13 @@ method manageOpenstack {
 
 #### MAINTAIN QUEUES
 method maintainQueues($workflows) {
-	#$self->logDebug("workflows", $workflows);
+	$self->logDebug("workflows", $workflows);
 	
 	print "\n\n#### DOING maintainQueues\n";
 	for ( my $i = 0; $i < @$workflows; $i++ ) {
 		my $workflow	=	$$workflows[$i];
-		$self->logDebug("workflow $i", $workflow->{name});
-		my $label	=	"[" . ($i + 1) . "] ". $$workflows[$i]->{name};
+		$self->logDebug("workflow $i", $workflow->{workflowname});
+		my $label	=	"[" . ($i + 1) . "] ". $$workflows[$i]->{workflowname};
 		
 		if ( $i != 0 ) {
 			$self->logDebug("$label NO COMPLETED JOBS in previous queue") and next if $self->noCompletedJobs($$workflows[$i - 1]);
@@ -221,7 +237,11 @@ method maintainQueue ($workflows, $workflowdata) {
 
 	if ( $numberqueued == 0 and not @$tasks ) {
 		$self->logDebug("Setting workflow $workflowdata->{workflow} status to 'completed'");
-		$self->setWorkflowStatus($workflowdata->{username}, $workflowdata->{project}, $workflowdata->{workflow}, "completed");
+		$self->setWorkflowStatus(
+			$workflowdata->{username}, 
+			$workflowdata->{projectname}, 
+			$workflowdata->{workflowname}, 
+			"completed");
 	}
 	elsif ( @$tasks ) {
 		foreach my $task ( @$tasks ) {
@@ -241,13 +261,13 @@ method maintainQueue ($workflows, $workflowdata) {
 method noCompletedJobs ($workflow) {
 	my $query	=	qq{SELECT COUNT(*) FROM queuesample
 WHERE username='$workflow->{username}'
-AND project='$workflow->{project}'
-AND workflow='$workflow->{workflow}'
+AND projectname='$workflow->{projectname}'
+AND workflowname='$workflow->{workflowname}'
 AND workflownumber='$workflow->{workflownumber}'
 AND status='completed'};
 	$self->logDebug("query", $query);
 	
-	my $completed	=	$self->db()->query($query);
+	my $completed	=	$self->table()->db()->query($query);
 	#$self->logDebug("completed", $completed);
 	
 	return 1 if $completed == 0;
@@ -263,18 +283,18 @@ AND name='$workflowdata->{name}'
 };
 	$self->logDebug("query", $query);
 
-	return $self->db()->do($query);
+	return $self->table()->db()->do($query);
 }
 
 method workflowCompleted ($workflowdata) {
 	my $query	=	qq{SELECT 1 FROM workflow
 WHERE username='$workflowdata->{username}'
-AND project='$workflowdata->{project}'
-AND name='$workflowdata->{name}'
+AND projectname='$workflowdata->{projectname}'
+AND workflowname='$workflowdata->{workflowname}'
 AND status='completed'};
 	#$self->logDebug("query", $query);
 	
-	return 1 if defined $self->db()->query($query);
+	return 1 if defined $self->table()->db()->query($query);
 	return 0;
 }
 
@@ -287,7 +307,22 @@ method getTasks ($queues, $queuedata, $limit) {
 	#### GET SAMPLE TABLE
 	my $sampletable	=	$self->getSampleTable($queuedata);
 	#$self->logDebug("sampletable", $sampletable);
-	print "Queuer::getTasks    sampletable not defined\n" and exit if not defined $sampletable;
+	print "Queuer::getTasks    sampletable not defined\n" if not defined $sampletable;
+
+	if ( not defined $sampletable ) {
+		my $task = $queuedata;
+		$task->{module}		=	"Agua::Workflow";
+		$task->{mode}		=	"executeWorkflow";
+		$task->{database}	=	$self->conf()->getKey( "database:DATABASE" );
+		
+		#### UPDATE TASK STATUS AS queued
+		$task->{status}		=	"queued";
+		
+		#### SET TIME QUEUED
+		$task->{time}		=	$self->getMysqlTime();
+	
+		return [ $task ];
+	}
 
 	#### POPULATE QUEUE SAMPLE TABLE IF EMPTY	
 	my $workflownumber	=	$queuedata->{workflownumber};
@@ -306,9 +341,10 @@ method getTasks ($queues, $queuedata, $limit) {
 
 	#### DIRECT THE TASK TO EXECUTE A WORKFLOW
 	foreach my $task ( @$tasks ) {
+
 		$task->{module}		=	"Agua::Workflow";
 		$task->{mode}		=	"executeWorkflow";
-		$task->{database}	=	$queuedata->{database} || $self->database() || $self->conf()->getKey("database:DATABASE", undef);
+		$task->{database}	=	$queuedata->{database} || $self->database() || $self->conf()->getKey( "database:DATABASE" );
 		
 		$task->{workflow}	=	$queuedata->{workflow};
 		$task->{workflownumber}=	$queuedata->{workflownumber};
@@ -335,7 +371,7 @@ AND project='$queuedata->{project}'
 AND workflow='$queuedata->{workflow}'};
 	#$self->logDebug("query", $query);
 	
-	return 1 if defined $self->db()->query($query);
+	return 1 if defined $self->table()->db()->query($query);
 	return 0;
 }
 
@@ -346,9 +382,9 @@ method populateQueueSamples($queuedata, $sampletable) {
 
 	my $query		=	qq{SELECT * FROM $sampletable};
 	$self->logDebug("query", $query);
-	my $samples		=	$self->db()->queryhasharray($query);
+	my $samples		=	$self->table()->db()->queryhasharray($query);
 	$self->logDebug("no. samples", scalar(@$samples));
-	my $fields		=	$self->db()->fields("queuesample");
+	my $fields		=	$self->table()->db()->fields("queuesample");
 	$self->logDebug("fields", $fields);
 
 	my $tsvfile		=	"/tmp/queuesample.$sampletable.$$.tsv";
@@ -360,7 +396,7 @@ method populateQueueSamples($queuedata, $sampletable) {
 		$sample->{workflow}	=	$queuedata->{workflow};
 		$sample->{workflownumber}	=	$queuedata->{workflownumber};
 		$sample->{status}	=	"none";
-		my $line	=	$self->db()->fieldsToTsv($fields, $sample);
+		my $line	=	$self->table()->db()->fieldsToTsv($fields, $sample);
 		#$self->logDebug("line", $line);
 
 		print OUT $line;
@@ -368,19 +404,19 @@ method populateQueueSamples($queuedata, $sampletable) {
 	close(OUT) or die "Can't close tsv file: $tsvfile\n";
 
 	$self->logDebug("loading 'queuesample' table");
-	$self->db()->load("queuesample", $tsvfile, undef);
+	$self->table()->db()->load("queuesample", $tsvfile, undef);
 	
 }
 
 method getSampleTable ($queuedata) {
 	my $username	=	$queuedata->{username};
-	my $project		=	$queuedata->{project};
+	my $project		=	$queuedata->{projectname};
 	my $query		=	qq{SELECT sampletable FROM sampletable
 WHERE username='$username'
-AND project='$project'};
+AND projectname='$project'};
 	#$self->logDebug("query", $query);
 	
-	return $self->db()->query($query);
+	return $self->table()->db()->query($query);
 }
 
 method getTaskSampleHash ($task, $sampletable) {
@@ -389,11 +425,11 @@ method getTaskSampleHash ($task, $sampletable) {
 	my $sample		=	$task->{sample};
 	my $query		=	qq{SELECT * FROM $sampletable
 WHERE username='$username'
-AND project='$project'
+AND projectname='$project'
 AND sample='$sample'};
 	#$self->logDebug("query", $query);
 	
-	return $self->db()->queryhash($query);
+	return $self->table()->db()->queryhash($query);
 }
 
 method pullTasks ($queues, $queuedata, $limit) {
@@ -419,7 +455,7 @@ AND status='$previous->{status}'
 LIMIT $limit};
 	$self->logDebug("query", $query);
 	
-	return $self->db()->queryhasharray($query) || [];
+	return $self->table()->db()->queryhasharray($query) || [];
 }
 
 method getPrevious ($queues, $queuedata) {
@@ -457,13 +493,13 @@ method sendTopic ($data, $key) {
 	$self->logDebug("data", $data);
 	#$self->logDebug("key", $key);
 
-	my $exchange	=	$self->conf()->getKey("queue:topicexchange", undef);
+	my $exchange	=	$self->conf()->getKey( "mq:topicexchange" );
 	#$self->logDebug("exchange", $exchange);
 
-	my $host		=	$self->host() || $self->conf()->getKey("queue:host", undef);
-	my $user		= 	$self->user() || $self->conf()->getKey("queue:user", undef);
-	my $pass		=	$self->pass() || $self->conf()->getKey("queue:pass", undef);
-	my $vhost		=	$self->vhost() || $self->conf()->getKey("queue:vhost", undef);
+	my $host		=	$self->host() || $self->conf()->getKey( "mq:host" );
+	my $user		= 	$self->user() || $self->conf()->getKey( "mq:user" );
+	my $pass		=	$self->pass() || $self->conf()->getKey( "mq:pass" );
+	my $vhost		=	$self->vhost() || $self->conf()->getKey( "mq:vhost" );
 	$self->logNote("host", $host);
 	$self->logNote("user", $user);
 	$self->logNote("pass", $pass);
@@ -498,13 +534,15 @@ method sendTopic ($data, $key) {
 }
 
 method setQueueName ($task) {
+	$self->logDebug( "task", $task );
+
 	#### VERIFY VALUES
-	my $notdefined	=	$self->notDefined($task, ["username", "project", "workflow"]);
+	my $notdefined	=	$self->notDefined($task, ["username", "projectname", "workflowname"]);
 	$self->logCritical("not defined", $notdefined) and return if @$notdefined;
 	
 	my $username	=	$task->{username};
-	my $project		=	$task->{project};
-	my $workflow	=	$task->{workflow};
+	my $project		=	$task->{projectname};
+	my $workflow	=	$task->{workflowname};
 	my $queue		=	"$username.$project.$workflow";
 	#$self->logDebug("queue", $queue);
 	
@@ -533,7 +571,7 @@ method updateJobStatus ($data) {
 
 	#### ADD TO provenance TABLE
 	my $table		=	"provenance";
-	my $fields		=	$self->db()->fields($table);
+	my $fields		=	$self->table()->db()->fields($table);
 	my $success		=	$self->_addToTable($table, $data, $keys, $fields);
 	#$self->logDebug("addToTable 'provenance'    success", $success);
 	$self->logDebug("failed to add to provenance table") if not $success;
@@ -566,16 +604,16 @@ method updateHeartbeat ($data) {
 
 	#### ADD TO TABLE
 	my $table		=	"heartbeat";
-	my $fields		=	$self->db()->fields($table);
+	my $fields		=	$self->table()->db()->fields($table);
 	$self->_addToTable($table, $data, $keys, $fields);
 }
 
 method setConfigMaxJobs ($queuename, $value) {
-	return $self->conf()->setKey("queue:maxjobs", $queuename, $value);
+	return $self->conf()->setKey( "mq:maxjobs:$queuename", $value );
 }
 
 method getConfigMaxJobs ($queuename) {
-	return $self->conf()->getKey("queue:maxjobs", $queuename);
+	return $self->conf()->getKey("mq:maxjobs:$queuename");
 }
 
 method pushTask ($task) {
@@ -649,7 +687,7 @@ method getQueueTasks {
 
 method getQueueTaskList {
 	
-	my $vhost		=	$self->conf()->getKey("queue:vhost", undef);
+	my $vhost		=	$self->conf()->getKey( "mq:vhost", undef);
 	#$self->logDebug("vhost", $vho st);
 	
 	my $rabbitmqctl	=	$self->rabbitmqctl();
@@ -668,17 +706,17 @@ method getQueueTaskList {
 method getQueuedJobs ($workflowdata) {
 	my $query	=	qq{SELECT * FROM queuesample
 WHERE username='$workflowdata->{username}'
-AND project='$workflowdata->{project}'
-AND workflow='$workflowdata->{workflow}'
+AND projectname='$workflowdata->{projectname}'
+AND workflowname='$workflowdata->{workflowname}'
 AND status='queued'};
 	#$self->logDebug("query", $query);
 	
-	return $self->db()->queryhasharray($query) || [];
+	return $self->table()->db()->queryhasharray($query) || [];
 }
 
 #### SEND TASK
 method setModules {
-    my $installdir = $self->conf()->getKey("agua", "INSTALLDIR");
+    my $installdir = $self->conf()->getKey( "core:INSTALLDIR" );
     my $modulestring = $self->modulestring();
 	$self->logDebug("modulestring", $modulestring);
 
@@ -941,7 +979,7 @@ method deeplyIdentical ($a, $b) {
 #FROM tenant};
 #	#$self->logDebug("query", $query);
 #
-#	return $self->db()->queryhasharray($query);
+#	return $self->table()->db()->queryhasharray($query);
 #}
 #
 

@@ -3,7 +3,11 @@ use MooseX::Declare;
 use strict;
 use warnings;
 
-class Siphon::Worker with (Logger, Exchange, Agua::Common::Database, Agua::Common::Timer) {
+class Siphon::Worker with (Util::Logger, 
+	Util::Timer,
+	Exchange) {
+
+use Sys::Hostname;
 
 # Integers
 has 'log'	=>  ( isa => 'Int', is => 'rw', default => 4 );
@@ -11,7 +15,6 @@ has 'printlog'	=>  ( isa => 'Int', is => 'rw', default => 5 );
 has 'sleep'		=>  ( isa => 'Int', is => 'rw', default => 300 );
 
 # Strings
-has 'queuename'	=> ( isa => 'Str|Undef', is => 'rw', default    => "tasks");
 has 'sendtype'	=> ( isa => 'Str|Undef', is => 'rw', default	=>	"report" );
 has 'database'	=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
 has 'user'		=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
@@ -25,13 +28,31 @@ has 'modulestring'	=> ( isa => 'Str|Undef', is => 'rw', default	=> "Agua::Workfl
 has 'conf'		=> ( isa => 'Conf::Yaml', is => 'rw', required	=>	0 );
 has 'parser'=> ( isa => 'JSON', is => 'rw', lazy	=>	1, default => sub {
 	return JSON->new->allow_nonref();	} );
-has 'db'		=> ( isa => 'Agua::DBase::MySQL|Undef', is => 'rw', required	=>	0 );
+
 has 'channel'	=> ( isa => 'Any', is => 'rw', required	=>	0 );
 has 'virtual'	=> ( isa => 'Any', is => 'rw', lazy	=>	1, builder	=>	"setVirtual" );
 
+has 'table'		=>	(
+	is 			=>	'rw',
+	isa 		=>	'Table::Main',
+	lazy		=>	1,
+	builder		=>	"setTable"
+);
+
+method setTable () {
+  my $table = Table::Main->new({
+    conf      =>  $self->conf(),
+    log       =>  $self->log(),
+    printlog  =>  $self->printlog(),
+    logfile   =>  $self->logfile()
+  });
+
+  $self->table($table); 
+}
+
 use FindBin qw($Bin);
-use Test::More;
-use Agua::Workflow;
+# use Test::More;
+# use Agua::Workflow;
 use TryCatch;
 use Getopt::Long;
 
@@ -46,24 +67,23 @@ method initialise ($args) {
 method run ($args) {
 
 	#### SET LOG
-	my $installdir	=	$ENV{'installdir'} || "/a";
+	my $installdir	=	$ENV{'FLOW_HOME'};
+	print "Environment variable not defined: FLOW_HOME\n" and exit if not defined $installdir;
 	my $logfile     =   "$installdir/log/seneschal.log";
 	my $json 		=	undef;
 	my $help;
-
-    {
-        local @ARGV = @$args;
+  {
+    local @ARGV = @$args;
 		GetOptions (
-            'json=s'  		=> \$json,
-
-            'log=i'  		=> \$self->{log},
-            'printlog=i'  	=> \$self->{printlog},
-            'logfile=s'  	=> \$self->{logfile},
-		    'help'          => \$help
+        'json=s'  		=> \$json,
+        'log=i'  		  => \$self->{log},
+        'printlog=i'  => \$self->{printlog},
+        'logfile=s'  	=> \$self->{logfile},
+		    'help'        => \$help
 		) or die "No options specified. Try '--help'\n";
 		usage() if defined $help;
 
-		my $configfile    =    "$installdir/conf/config.yaml";
+		my $configfile    =    "$installdir/conf/config.yml";
 		my $conf = Conf::Yaml->new(
 		    inputfile   =>  $configfile,
 		    backup      =>  1,
@@ -92,10 +112,9 @@ method run ($args) {
 
 
 method listen {
-	$self->logDebug("");
-
 	#### LISTEN FOR TASKS SENT FROM MASTER
-	my $queuename 	= 	$self->queuename();
+	my $queuename 	= 	$self->conf()->getKey( "mq:exchange:worker" );
+	# $self->logDebug( "queuename", $queuename );
 	my $handler		=	"handleTask";
 	$self->receiveTask($queuename, $handler);
 }
@@ -126,7 +145,8 @@ method receiveTask ($queuename, $handler) {
 	);
 
 	#### CONSUME
-	my $hostname = `facter hostname`;
+	# my $hostname = `facter hostname`;
+	my $hostname = hostname;
 	$hostname =~ s/\+//g;
 	$connection->consume(
 		$channelid,
@@ -195,7 +215,7 @@ method handleTask ($json) {
 	#### SET STATUS TO completed
 	$self->conf()->setKey( "workflow:status", "completed");
 
-	#### SHUT DOWN TASK LISTENER IF SPECIFIED IN config.yaml
+	#### SHUT DOWN TASK LISTENER IF SPECIFIED IN config.yml
 	$self->verifyShutdown();
 	
 	$self->logDebug("END handletask");
@@ -217,7 +237,7 @@ method sendTask ($queuename, $data) {
 	$self->logDebug("message", substr($message, 0, 1000));
 
 	#### GET HOST
-	my $host		=	$self->conf()->getKey("queue:host", undef);
+	my $host		=	$self->conf()->getKey( "mq:host", undef);
 	$self->logDebug("host", $host);
 
 	#### GET CONNECTION

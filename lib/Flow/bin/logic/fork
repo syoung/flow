@@ -145,7 +145,7 @@ GetOptions (
 usage() if defined $help;
 
 #### SET CONF
-my $configfile		=	"$installdir/conf/config.yaml";
+my $configfile		=	"$installdir/conf/config.yml";
 my $conf = Conf::Yaml->new(
     memory      =>  0,
     inputfile   =>  $configfile,

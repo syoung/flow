@@ -96,21 +96,20 @@ method run ($args) {
 	my $logfile     =   "$installdir/log/listener.log";
 	my $json 		=	undef;
 	my $help;
-    {
-        local @ARGV = @$args;
+  {
+    local @ARGV = @$args;
 		GetOptions (
-            'json=s'  		=> \$json,
-
-            'log=i'  		=> \$self->{log},
-            'printlog=i'  	=> \$self->{printlog},
-            'logfile=s'  	=> \$self->{logfile},
-		    'help'          => \$help
+        'json=s'  		=> \$json,
+        'log=i'  		  => \$self->{log},
+        'printlog=i'  => \$self->{printlog},
+        'logfile=s'  	=> \$self->{logfile},
+		    'help'        => \$help
 		) or die "No options specified. Try '--help'\n";
 		usage() if defined $help;
 
 		$self->logDebug("json", $json);
 
-		my $configfile    =    "$installdir/conf/config.yaml";
+		my $configfile    =    "$installdir/conf/config.yml";
 		my $conf = Conf::Yaml->new(
 		    inputfile   =>  $configfile,
 		    backup      =>  1,
@@ -143,7 +142,7 @@ method receiveTask ($taskqueues, $handler) {
 	# my $exchange = "gravity.checks";
 	#$self->logDebug("taskqueues", $taskqueues);
 
-	my $host		=	$self->host() || $self->conf()->getKey("queue:host", undef);
+	my $host		=	$self->host() || $self->conf()->getKey( "mq:host", undef);
 	$host = "localhost";
 	$self->logDebug("host", $host);
 

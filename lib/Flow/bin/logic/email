@@ -99,7 +99,7 @@ GetOptions (
 usage() if defined $help;
 
 #### SET CONF
-my $configfile		=	"$installdir/conf/config.yaml";
+my $configfile		=	"$installdir/conf/config.yml";
 my ($script)        =   $0 =~ /([^\/]+)$/;         
 my $logfile         =   "$installdir/log/$script.log";
 my $conf = Conf::Yaml->new(

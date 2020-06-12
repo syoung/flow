@@ -99,7 +99,7 @@ method run ($args) {
 			) or die "No options specified. Try '--help'\n";
 			usage() if defined $help;
 
-			my $configfile    =    "$installdir/conf/config.yaml";
+			my $configfile    =    "$installdir/conf/config.yml";
 			my $conf = Conf::Yaml->new(
 			    inputfile   =>  $configfile,
 			    backup      =>  1,
@@ -153,7 +153,7 @@ method listen ($args) {
 method setConfig {
 	my $installdir = $ENV{'installdir'} || "/a";
 	my $logfile		=   "$installdir/log/seneschal.log";
-	my $configfile	=	"$installdir/conf/config.yaml";
+	my $configfile	=	"$installdir/conf/config.yml";
 	my $conf = Conf::Yaml->new(
 	    inputfile   =>  $configfile,
 	    backup      =>  1,

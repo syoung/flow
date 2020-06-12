@@ -230,7 +230,7 @@ method service ($args) {
 method setConf {
 	my $installdir 	= 	$ENV{'installdir'} || "/a";
 	my $logfile     =   "$installdir/log/broadcast.log";
-	my $configfile	=	"$installdir/conf/config.yaml";
+	my $configfile	=	"$installdir/conf/config.yml";
 	my $conf = Conf::Yaml->new(
 	    inputfile	=>	$configfile,
 	    backup		=>	1,

@@ -32,9 +32,7 @@ use POSIX qw(ceil floor);
 
 #### INTERNAL MODULES
 use Time::Local;
-use Virtual;
-
-#####////}}}}}
+# use Virtual;
 
 method pause {
 	my $sleep	=	$self->sleep();
@@ -44,7 +42,7 @@ method pause {
 
 method getProjectsByUsername ($username) {
 	return if not defined $username;
-	return $self->db()->queryarray("SELECT * FROM project WHERE username='$username'");
+	return $self->table()->db()->queryarray("SELECT * FROM project WHERE username='$username'");
 }
 #### BALANCE INSTANCES
 method balanceOpenstackInstances ($workflows) {
@@ -151,7 +149,7 @@ method stoppingInstances {
 	my $query	=	qq{SELECT * FROM instance
 WHERE status='stopping'
 };
-	my $stopping	=	$self->db()->queryhasharray($query);
+	my $stopping	=	$self->table()->db()->queryhasharray($query);
 	$self->logDebug("stopping", $stopping);
 	
 	if ( defined $stopping ) {
@@ -266,7 +264,7 @@ method addHostInstance ($workflow, $hostname, $id) {
 
 	#### ADD TO TABLE
 	my $table		=	"instance";
-	my $fields		=	$self->db()->fields($table);
+	my $fields		=	$self->table()->db()->fields($table);
 	$self->_addToTable($table, $data, $keys, $fields);
 }
 
@@ -306,7 +304,7 @@ method hostExists ($host) {
 WHERE host='$host'};
 	#$self->logDebug("query", $query);
 	
-	my $success	=	$self->db()->query($query);
+	my $success	=	$self->table()->db()->query($query);
 	#$self->logDebug("success", $success);
 	
 	return 0 if not defined $success;
@@ -336,7 +334,7 @@ SET status='$status',
 TIME='$time'
 WHERE id='$id'
 };
-	return $self->db()->do($query);
+	return $self->table()->db()->do($query);
 }
 
 #### DELETE NODES
@@ -350,7 +348,7 @@ AND status='running'
 LIMIT $number};
 	#$self->logDebug("query", $query);
 	
-	my $instances	=	$self->db()->queryhasharray($query);
+	my $instances	=	$self->table()->db()->queryhasharray($query);
 	foreach my $instance ( @$instances ) {
 		$self->updateInstanceStatus($instance->{id}, "stopping");
 		$self->shutdownInstance($workflow, $instance->{host});
@@ -647,7 +645,7 @@ AND workflownumber=$queue->{workflownumber}
 AND status!='completed'
 ORDER BY sample};
 	#$self->logDebug("query", $query);
-	my $has	=	$self->db()->query($query);
+	my $has	=	$self->table()->db()->query($query);
 	#$self->logDebug("has", $has);
 
 	return 1 if defined $has;
@@ -860,7 +858,7 @@ method getQueueInstance ($queue) {
 WHERE username='$queue->{username}'
 AND cluster='$queuename'};
 	$self->logDebug("query", $query);
-	my $instancetype	=	$self->db()->queryhash($query);
+	my $instancetype	=	$self->table()->db()->queryhash($query);
 	#$self->logDebug("instancetype", $instancetype);	
 	
 	return $instancetype;
@@ -906,7 +904,7 @@ WHERE username='$username'
 AND status='running'
 GROUP BY queue};
 	#$self->logDebug("query", $query);
-	my $entries	=	$self->db()->queryhasharray($query);
+	my $entries	=	$self->table()->db()->queryhasharray($query);
 	#$self->logDebug("entries", $entries);
 	my $counts	=	{};
 	foreach my $entry ( @$entries ) {
@@ -928,11 +926,11 @@ method setMaxQuota ($queues, $instancecounts, $latestindex) {
 
 method getRunningUserProjects ($username) {
 	#$self->logDebug("username", $username);
-	my $query	=	qq{SELECT name FROM project
+	my $query	=	qq{SELECT projectname FROM project
 WHERE username='$username'
 AND status='running'};
 	$self->logDebug("query", $query);
-	my $projects	=	$self->db()->queryarray($query);
+	my $projects	=	$self->table()->db()->queryarray($query);
 	$self->logDebug("projects", $projects);
 	
 	return $projects;
@@ -960,7 +958,7 @@ AND workflownumber=$queue->{workflownumber}
 AND status='completed'
 ORDER BY sample};
 	#$self->logDebug("query", $query);
-	my $samples	=	$self->db()->queryhasharray($query);
+	my $samples	=	$self->table()->db()->queryhasharray($query);
 	#$self->logDebug("samples", $samples);
 
 	return $samples;	
@@ -989,7 +987,7 @@ AND status!='completed'
 AND status!='none'
 ORDER BY sample};
 	#$self->logDebug("query", $query);
-	my $started	=	$self->db()->query($query);
+	my $started	=	$self->table()->db()->query($query);
 	#$self->logDebug("started", $started);
 
 	return 1 if defined $started;
@@ -1005,7 +1003,7 @@ AND workflownumber=$queue->{workflownumber}
 AND status!='completed'
 ORDER BY sample};
 	#$self->logDebug("query", $query);
-	my $samples	=	$self->db()->queryhasharray($query);
+	my $samples	=	$self->table()->db()->queryhasharray($query);
 	#$self->logDebug("samples", $samples);
 
 	return $samples;	
@@ -1017,7 +1015,7 @@ method getQueueCluster ($queue) {
 WHERE username='$queue->{username}'
 AND cluster='$queuename'};
 	$self->logDebug("query", $query);
-	my $instancetype	=	$self->db()->queryhash($query);
+	my $instancetype	=	$self->table()->db()->queryhash($query);
 	#$self->logDebug("instance", $instance);
 	
 	return $instancetype;
@@ -1155,7 +1153,7 @@ AND workflow='$queue->{workflow}'
 AND workflownumber=$queue->{workflownumber}
 ORDER BY sample, time};
 	#$self->logDebug("query", $query);
-	my $provenance	=	$self->db()->queryhasharray($query);
+	my $provenance	=	$self->table()->db()->queryhasharray($query);
 	#$self->logDebug("provenance", $provenance);
 
 	return $provenance;
@@ -1169,7 +1167,7 @@ AND project.name=queuesample.project
 ORDER BY queuesample.username, queuesample.project, queuesample.workflownumber, queuesample.sample};
 	$self->logDebug("query", $query);
 
-	return	$self->db()->queryhasharray($query);
+	return	$self->table()->db()->queryhasharray($query);
 }
 
 method getDistinctQueues ($project) {
@@ -1182,7 +1180,7 @@ AND project.name=queuesample.project
 ORDER BY queuesample.username, queuesample.project, queuesample.workflownumber, queuesample.sample};
 	#$self->logDebug("query", $query);
 
-	return	$self->db()->queryhasharray($query);
+	return	$self->table()->db()->queryhasharray($query);
 }
 
 #### TOPICS
@@ -1190,13 +1188,13 @@ method sendTopic ($data, $key) {
 	$self->logDebug("data", $data);
 	$self->logDebug("key", $key);
 
-	my $exchange	=	$self->conf()->getKey("queue:topicexchange", undef);
+	my $exchange	=	$self->conf()->getKey( "mq:topicexchange", undef);
 	$self->logDebug("exchange", $exchange);
 
-	my $host		=	$self->host() || $self->conf()->getKey("queue:host", undef);
-	my $user		= 	$self->user() || $self->conf()->getKey("queue:user", undef);
-	my $pass		=	$self->pass() || $self->conf()->getKey("queue:pass", undef);
-	my $vhost		=	$self->vhost() || $self->conf()->getKey("queue:vhost", undef);
+	my $host		=	$self->host() || $self->conf()->getKey( "mq:host", undef);
+	my $user		= 	$self->user() || $self->conf()->getKey( "mq:user", undef);
+	my $pass		=	$self->pass() || $self->conf()->getKey( "mq:pass", undef);
+	my $vhost		=	$self->vhost() || $self->conf()->getKey( "mq:vhost", undef);
 	$self->logDebug("host", $host);
 	$self->logDebug("user", $user);
 	$self->logDebug("pass", $pass);

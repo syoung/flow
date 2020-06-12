@@ -1,14 +1,12 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 =head2
 
 PURPOSE
 
-    1. Listen for RabbitMQ 'task' queue messages sent by Queuer    
+    1. Listen for RabbitMQ 'task' queue messages
     
-    2. Send job progress updates (started, completed, error, etc.) 
-    
-        - update.job.status
+    2. Send job progress updates (started, completed, error, etc.) to exchange 'inbound.job.status'
 
    3. Save messages to the following database tables
         
@@ -19,19 +17,23 @@ INPUT
 
     1. FOR MANUAL TESTING, PROVIDE A SUBCOMMAND, E.G.:
 
-
-
-
 =cut
-
 
 #### EXTERNAL MODULES
 use Getopt::Long;
 use FindBin qw($Bin);
 
+#### USE LIBS
+use lib "$Bin/../../lib";
+
+# my $installdir = $ENV{'FLOW_HOME'};
+# print "Environment variable not defined: FLOW_HOME\n" and exit if not defined $installdir;
+# print "FLOW_HOME: $installdir\n";
+
 $|++;
 
-#### INTERNAL MODULES
+# #### INTERNAL MODULES
+use Conf::Yaml;
 use Siphon::Worker;
 
 #### GET ARGUMENTS
@@ -44,3 +46,4 @@ my $object      =  Siphon::Worker->new({});
 $object->run(\@arguments);
 
 ##############################################################
+
