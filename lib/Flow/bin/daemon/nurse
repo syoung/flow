@@ -1,0 +1,46 @@
+#!/usr/bin/env perl
+
+=head2
+
+PURPOSE
+
+  1. Listen for heartbeat
+   
+   2. Save status update to the 'queuesample' table
+   
+    Overall status of the sample: none, queued, running, completed 
+ 
+INPUT
+
+  1. FOR MANUAL TESTING, PROVIDE A SUBCOMMAND, E.G.:
+
+    SYSTEM
+
+    /a/bin/daemon/listener --log 4 --json '{"sourceid":"","version":"0.0.1","stdout":"","queued":"2016-03-09 13:11:01","token":null,"callback":"","host":"ip-10-50-1-187","username":"admin","time":"2016-03-09 13:11:01","samplehash":{"outputdir":"/data/bam","sourcebucket":"itmi.cl.macrogen","targetbucket":"itmi.cl.macrogenqc","sample":"16032a86-ecba-4377-ae0b-e51aa2623b61","run":"1509UNHX-0002","status":"","project":"QC","ordinal":"76","username":"admin","subject":"GM14057"},"sendtype":"report","project":"QC","installdir":"/usr/bin","sample":"16032a86-ecba-4377-ae0b-e51aa2623b61","processid":31095,"location":"aws","mode":"updateJobStatus","stage":"downloadVCF","completed":"0000-00-00 00:00:00","started":"2016-03-09 13:11:01","workflow":"All","number":"1","ipaddress":"10.50.1.187","workflownumber":"1","name":"downloadVCF","database":"agua","status":"started","queue":"update.job.status","stagenumber":"1","stderr":""}'
+
+
+    CURRENT MESSAGES
+
+    /a/bin/daemon/listener --log 4 --json '{"callback":"","status":"started","time":"2016-03-21 20:34:42","queued":"2016-03-21 20:34:42","installdir":"/a","workflow":"All","stdout":"","mode":"updateJobStatus","sample":"f6fe79aa-35d4-4f47-ade0-f2ce5f7fd9bf","stagenumber":"17","stage":"forkhethom","stderr":"","sendtype":"report","location":"bin/logic/fork","completed":"2016-03-21 15:28:54","name":"forkhethom","processid":19779,"version":"0.0.1","sourceid":"","token":null,"samplehash":{"outputdir":"/data/bam","status":"","sample":"f6fe79aa-35d4-4f47-ade0-f2ce5f7fd9bf","run":"1509UNHX-0001","username":"admin","targetbucket":"itmi.cl.macrogenqc","subject":"GM12879","ordinal":"17","sourcebucket":"itmi.cl.macrogen","project":"QC"},"ipaddress":"10.50.1.248","started":"2016-03-21 20:34:42","host":"Ip-10-50-1-248","number":"17","project":"QC","workflownumber":"1","database":"agua","username":"admin","queue":"update.job.status"}'
+
+=cut
+
+#### EXTERNAL MODULES
+use Getopt::Long;
+use FindBin qw($Bin);
+
+$|++;
+
+#### INTERNAL MODULES
+use Siphon::Nurse;
+
+#### GET ARGUMENTS
+my @arguments = @ARGV;
+
+#### OBJECT
+my $object    =  Siphon::Nurse->new({});
+
+#### RUN
+$object->run(\@arguments);
+
+##############################################################

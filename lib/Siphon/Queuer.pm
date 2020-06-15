@@ -585,19 +585,6 @@ method updateQueueSample ($data) {
 	return $self->_addToTable($table, $data, $keys);
 }
 
-#### HEARTBEAT
-method updateHeartbeat ($data) {
-	$self->logDebug("host $data->{host} [$data->{time}]");
-	#$self->logDebug("data", $data);
-	my $keys	=	[ "host", "time" ];
-	my $notdefined	=	$self->notDefined($data, $keys);	
-	$self->logDebug("notdefined", $notdefined) and return if @$notdefined;
-
-	#### ADD TO TABLE
-	my $table		=	"heartbeat";
-	my $fields		=	$self->table()->db()->fields($table);
-	$self->_addToTable($table, $data, $keys, $fields);
-}
 
 method setConfigMaxJobs ($queuename, $value) {
 	return $self->conf()->setKey( "mq:maxjobs:$queuename", $value );

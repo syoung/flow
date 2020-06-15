@@ -352,6 +352,40 @@ method getFiles ($directory) {
 }
 
 
+#####################
+#### TIME-RELATED METHODS
+#####################
+
+method timestamp () {
+    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+    my $timestamp = sprintf "%4d-%02d-%02d %02d:%02d:%02d",
+        $year+1900,$mon+1,$mday,$hour,$min,$sec;
+
+    #print "Flow::Timer::setStarted    timestamp: ", $timestamp, "\n";
+
+    return $timestamp;
+}
+
+method setStarted {
+    $self->epochstarted(time);
+    $self->started($self->timestamp());
+    #print "Flow::Timer::setStarted    started: ", $self->started(), "\n";
+}
+
+method setStopped {
+    $self->epochstopped(time);
+    $self->stopped($self->timestamp());
+}
+
+method setDuration {
+    $self->epochduration($self->epochstopped() - $self->epochstarted());
+    my $duration = int($self->epochduration()/3600) . " hrs ";
+    $duration .= int( ($self->epochduration() % 3600) / 60 ) . " mins ";
+    $duration .= ($self->epochduration() % 60) . " secs";
+    $self->duration($duration);
+}
+
+
 
 no Moose::Role;
 

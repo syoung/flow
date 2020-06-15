@@ -166,19 +166,8 @@ method handleTask ($json) {
 	#$self->logDebug("data", $data);
 
 	my $mode =	$data->{mode} || "";
-	$self->logDebug("mode", $mode);
+	$self->logDebug("mode", $mode);s
 	
-	my $supported = [ "updateJobStatus", "updateHeartbeat" ];
-	if ( not $self->memberOfArray( $supported, $mode ) ) {
-		print "Mode not supported: $mode\n";
-		return;
-	}
-
-	$SIG{DIE} = *Siphon::Listener::killProcesses;
-	$SIG{WARN} = *Siphon::Listener::killProcesses;
-	$SIG{INT} = *Siphon::Listener::killProcesses;
-
-
 	try {
 		print "INSIDE TRY\n";
 		$self->$mode($data);		

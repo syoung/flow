@@ -1,9 +1,6 @@
 [submodule "lib/Conf"]
 	path = lib/Conf
 	url = https://github.com/syoung/flow-conf
-[submodule "lib/DBase"]
-	path = lib/DBase
-	url = https://github.com/syoung/flow-dbase
 [submodule "lib/Engine"]
 	path = lib/Engine
 	url = https://github.com/syoung/flow-engine

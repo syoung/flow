@@ -4,10 +4,7 @@ use Getopt::Simple;
 use FindBin qw($Bin);
 use lib "$Bin/../..";
 
-class Flow::Project with (Util::Logger, 
-  Flow::Timer, 
-  Flow::Common, 
-  Flow::Database) {
+class Flow::Project with (Util::Logger, Flow::Common) {
 
 #### EXTERNAL
 use File::Path;
@@ -19,7 +16,6 @@ use TryCatch;
 use Flow::Workflow;
 use Flow::App;
 use Flow::Parameter;
-use DBase::Factory;
 use Table::Main;
 
 #### Int
@@ -119,9 +115,6 @@ method initialise {
   $self->owner($self->username()) if not defined $self->owner();
   $self->inputfile($self->projfile()) if defined $self->projfile() and $self->projfile() ne "";
   
-  $self->logDebug("Doing self->setDbh");
-  $self->setDbh();
-
   $self->logDebug("inputfile must end in '.prj'") and exit
       if $self->inputfile()
       and not $self->inputfile() =~ /\.prj$/;

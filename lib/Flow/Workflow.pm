@@ -5,9 +5,7 @@ use Cwd;
 use FindBin qw($Bin);
 use lib "$Bin/../..";
 
-class Flow::Workflow with (Util::Logger, 
-	Flow::Timer, 
-	Flow::Common) {
+class Flow::Workflow with (Util::Logger, Flow::Common) {
 
 #### EXTERNAL
 use File::Path;

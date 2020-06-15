@@ -6,9 +6,7 @@ use lib "$Bin/../..";
 
 class Flow::Main with (Util::Logger,
   Util::Timer, 
-	Flow::Timer, 
-	Flow::Common, 
-	Flow::Database) {
+	Flow::Common) {
 
 #### EXTERNAL
 use File::Path;
@@ -27,7 +25,6 @@ use Flow::Project;
 use Flow::Workflow;
 use Flow::App;
 use Flow::Parameter;
-use DBase::Factory;
 use Table::Main;
 use Virtual::Factory;
 
@@ -1679,7 +1676,6 @@ method insertWorkflow ( $project, $wkfile, $workflownumber ) {
 	print "Inserted workflow '$workflowname' at number $workflownumber in project '$project' for user '$username'\n";
 }
 
-
 method runWorkflow ( $projectname, $workflowid ) {
 	#### SET USERNAME AND OWNER
 	my $username    =   $self->setUsername();
@@ -2485,7 +2481,6 @@ method getProjectWorkflowObjects ($username, $project) {
 
 	return $workflowobjects;	
 }
-
 
 method getProjectWorkflowObject ($username, $project, $workflow) {
 	$self->logDebug("username", $username);

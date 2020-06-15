@@ -1,13 +1,6 @@
 use MooseX::Declare;
-use Flow::Timer;
-use Flow::Status;
 
-
-class Flow::App with (Util::Logger, 
-    Flow::Timer, 
-    Flow::Status, 
-    Flow::Database,
-    Flow::Common) {
+class Flow::App with (Util::Logger, Flow::Common) {
 
     use File::Path;
     use JSON;
