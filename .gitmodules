@@ -10,9 +10,6 @@
 [submodule "lib/Exchange"]
 	path = lib/Exchange
 	url = https://github.com/syoung/flow-exchange
-[submodule "lib/Ops"]
-	path = lib/Ops
-	url = https://github.com/syoung/flow-ops
 [submodule "lib/Table"]
 	path = lib/Table
 	url = https://github.com/syoung/flow-table

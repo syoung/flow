@@ -43,7 +43,7 @@ use Conf::Yaml;
 #### SET CONF FILE
 my $installdir  =   $ENV{'FLOW_HOME'};
 if ( not defined $installdir ) {
-  print "Can't find FLOW_HOME environment variable. Exiting\n";
+  print "Can't find environment variable: FLOW_HOME\n";
   exit;
 }
 

@@ -33,10 +33,7 @@ use Test::More;
 use POSIX qw(ceil floor);
 
 #### INTERNAL MODULES
-#use Virtual::Openstack;
-# use Synapse;
 use Time::Local;
-# use Virtual;
 use Table::Main;
 
 # Integers
@@ -80,18 +77,13 @@ method setTable () {
   $self->table($table); 
 }
 
-
-# has 'virtual'	=> ( isa => 'Any', is => 'rw', lazy	=>	1, builder	=>	"setVirtual" );
-# has 'duplicate'	=> ( isa => 'HashRef|Undef', is => 'rw');
-# has 'channel'	=> ( isa => 'Any', is => 'rw', required	=>	0 );
-
 method BUILD ($args) {
 	$self->initialise($args);	
 }
 
 method initialise ($args) {
 	#$self->logDebug("args", $args);
-	#$self->manage();
+	$self->manage();
 }
 
 method manage {
@@ -206,8 +198,8 @@ method maintainQueues($workflows) {
 method maintainQueue ($workflows, $workflowdata) {	
 	#$self->logDebug("workflowdata", $workflowdata);
 	
-	my $queuename	=	$self->setQueueName($workflowdata);
-	$self->logDebug("queuename", $queuename);
+	# my $queuename	=	$self->setQueueName($workflowdata);
+	# $self->logDebug("queuename", $queuename);
 	
 	my $workflowcompleted	=	$self->workflowCompleted($workflowdata);
 	$self->logDebug("workflowcompleted", $workflowcompleted);
@@ -224,7 +216,7 @@ method maintainQueue ($workflows, $workflowdata) {
 
 	#### ADD MORE JOBS TO QUEUE IF LESS THAN maxjobs
 	my $limit	=	$maxjobs - $numberqueued;
-	$self->logDebug("limit", $limit);
+	$self->logDebug( "limit", $limit );
 
 	return 0 if $limit <= 0;
 
@@ -248,7 +240,6 @@ method maintainQueue ($workflows, $workflowdata) {
 			
 			$task->{sendtype}	=	$self->sendtype();
 			
-			my $queuename = "tasks";
 			$self->sendTask($queuename, $task);
 		
 			$self->updateJobStatus($task);

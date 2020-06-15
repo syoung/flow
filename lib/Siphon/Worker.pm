@@ -7,7 +7,14 @@ class Siphon::Worker with (Util::Logger,
 	Util::Timer,
 	Exchange) {
 
-use Sys::Hostname;
+use FindBin qw($Bin);
+
+#### USE LIBS
+use lib "$Bin/../../../../lib";
+
+use TryCatch;
+use Getopt::Long;
+use Util::Profile;
 
 # Integers
 has 'log'	=>  ( isa => 'Int', is => 'rw', default => 4 );
@@ -15,7 +22,9 @@ has 'printlog'	=>  ( isa => 'Int', is => 'rw', default => 5 );
 has 'sleep'		=>  ( isa => 'Int', is => 'rw', default => 300 );
 
 # Strings
-has 'sendtype'	=> ( isa => 'Str|Undef', is => 'rw', default	=>	"report" );
+has 'processname' => ( is => 'Str', is => 'rw', default => "heartbeat" );
+has 'queuename'  =>  ( isa => 'Str', is => 'rw', default => "outbound.job.queue" );
+# has 'sendtype'	=> ( isa => 'Str|Undef', is => 'rw', default	=>	"report" );
 has 'database'	=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
 has 'user'		=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
 has 'pass'		=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
@@ -33,10 +42,10 @@ has 'channel'	=> ( isa => 'Any', is => 'rw', required	=>	0 );
 has 'virtual'	=> ( isa => 'Any', is => 'rw', lazy	=>	1, builder	=>	"setVirtual" );
 
 has 'table'		=>	(
-	is 			=>	'rw',
-	isa 		=>	'Table::Main',
-	lazy		=>	1,
-	builder		=>	"setTable"
+	is 			    =>	'rw',
+	isa 		    =>	'Table::Main',
+	lazy		    =>	1,
+	builder		  =>	"setTable"
 );
 
 method setTable () {
@@ -50,18 +59,20 @@ method setTable () {
   $self->table($table); 
 }
 
-use FindBin qw($Bin);
-# use Test::More;
-# use Agua::Workflow;
-use TryCatch;
-use Getopt::Long;
-
 method BUILD ($args) {
-	$self->initialise($args);	
+  #### SET LOGS
+  $self->log( $args->{ log } ) if defined $args->{ log };
+  $self->printlog( $args->{ printlog } ) if defined $args->{ printlog };
+
+  #### KILL EXISTING PROCESSES
+	$self->killProcesses( $self->processname() );	
 }
 
-method initialise ($args) {
-	#$self->logDebug("args", $args);	
+method killProcesses ( $processname ) {
+	my $processid = $$;
+	$self->logDebug( "processid", $processid );
+	my $ps = "ps aux | grep $processname | grep -v $processid | tr -s ' '| cut -f 2 -d \" \" | xargs -L 1 kill -9";
+	print `$ps`;
 }
 
 method run ($args) {
@@ -145,9 +156,7 @@ method receiveTask ($queuename, $handler) {
 	);
 
 	#### CONSUME
-	# my $hostname = `facter hostname`;
-	my $hostname = hostname;
-	$hostname =~ s/\+//g;
+	my $hostname = $self->getHostname();
 	$connection->consume(
 		$channelid,
 		$queuename,
@@ -182,14 +191,10 @@ method handleTask ($json) {
 	$self->logDebug("$$ json", $json);
 	my $data = $self->parser()->decode($json);
 
-# my $sleeping = 500;
-# $self->logDebug("sleeping", $sleeping);
-# sleep($sleeping);
-
-	#### CHECK sendtype
-	my $sendtype = $data->{ sendtype };
-	$self->logDebug("sendtype", $sendtype);
-	return 0 if $sendtype ne "task";
+	# #### CHECK sendtype
+	# my $sendtype = $data->{ sendtype };
+	# $self->logDebug("sendtype", $sendtype);
+	# # return 0 if $sendtype ne "task";
 
 	$data->{ start }		=  	1;
 	$data->{ conf }		  =   $self->conf();
@@ -198,86 +203,128 @@ method handleTask ($json) {
 	$data->{ printlog }	=   $self->printlog();	
 	$data->{ worker }		=	  $self;
 
-	$self->setDbh() if not defined $self->db();
+	my $stageobject = $self->stageFactory( $data );
+	$self->logDebug( "stageobject", $stageobject );
 
-	my $workflow = Agua::Workflow->new($data);
+	# #### SET STATUS TO running
+	# $self->conf()->setKey("workflow:status", "running");
 
-	#### SET STATUS TO running
-	$self->conf()->setKey("agua", "STATUS", "running");
+	# try {
+	# 	$workflow->executeWorkflow($data);	
+	# }
+	# catch {
+	# 	$self->logDebug("FAILED to handle task with json", $json);
+	# }
 
-	try {
-		$workflow->executeWorkflow($data);	
-	}
-	catch {
-		$self->logDebug("FAILED to handle task with json", $json);
-	}
+	# #### SET STATUS TO completed
+	# $self->conf()->setKey( "workflow:status", "completed");
 
-	#### SET STATUS TO completed
-	$self->conf()->setKey( "workflow:status", "completed");
-
-	#### SHUT DOWN TASK LISTENER IF SPECIFIED IN config.yml
-	$self->verifyShutdown();
+	# #### SHUT DOWN TASK LISTENER IF SPECIFIED IN config.yml
+	# $self->verifyShutdown();
 	
-	$self->logDebug("END handletask");
+	# $self->logDebug("END handletask");
 }
 
-method sendTask ($queuename, $data) {
-	$self->logDebug("queuename", $queuename);
-	$self->logDebug("data", $data);
+method stageFactory ( $stage ) {
+	$self->logDebug( "stage", $stage );
+	my $profilehash = $stage->{profile};
+	$self->logDebug( "profilehash", $profilehash );
 
-	my $processid	=	$$;
-	#$self->logDebug("processid", $processid);
-	$data->{ processid }	=	$processid;
+	my $profile = Util::Profile->new();
+	$profile->profilehash( $profilehash );
 
-	#### ADD UNIQUE IDENTIFIERS
-	$data	=	$self->addTaskIdentifiers($data);
+	my $runtype = $profile->getProfileValue( "run:type" );
+	$runtype = "Shell" if not $runtype;
+	my $hostname = $profile->getProfileValue( "host:name" );
+	$hostname = "Local" if not $hostname;
+	my $virtual = $profile->getProfileValue( "virtual" );
+	$virtual = "Local" if not $virtual;
+	$self->logDebug( "runtype", $runtype );
+	$self->logDebug( "hostname", $hostname );
+	$self->logDebug( "virtual", $virtual );
 
-	my $parser = JSON->new();
-	my $message = $parser->encode($data);
-	$self->logDebug("message", substr($message, 0, 1000));
+	my $hosttype = $self->getHostType( $hostname, $virtual );
+	$self->logDebug( "hosttype", $hosttype );
 
-	#### GET HOST
-	my $host		=	$self->conf()->getKey( "mq:host", undef);
-	$self->logDebug("host", $host);
+#### MONITOR IS CREATED BY Monitor::Factory BASED ON
+#### VALUE OF run:type:scheduler
 
-	#### GET CONNECTION
-	my $connection	=	$self->newConnection();
+  # #### GET MONITOR
+  # $self->logDebug( "BEFORE monitor = self->updateMonitor()" );
+  # my $monitor  =   undef;
+  # $monitor = $self->updateMonitor();
+  # $self->logDebug( "AFTER XXX monitor = self->updateMonitor()" );
 
-	my $channelid = 1;
-	my $channel = $connection->channel_open($channelid);
+  $hosttype = $self->cowCase( $hosttype );
+  $runtype = $self->cowCase( $runtype );
+  print "Engine::Workflow    runtype: $runtype\n";
+  print "Engine::Workflow    hosttype: $hosttype\n";
 
-	$connection->queue_declare(
-		$channelid,
-		$queuename,
-		{
-			queue 	=> $queuename,
-			durable => 1,
-			auto_delete => 0
-		}
-	);
-	
-	$connection->publish(
-		$channelid,
-		$queuename,
-		$message,
-		{
-			routing_key => $queuename,
-			exchange => ""
-		}
-	);
+  my $location    = "$Bin/../../Engine/$hosttype/$runtype/Stage.pm";
+  $self->logDebug( "location", $location );
+  my $class          = "Engine::" . $hosttype . "::" . $runtype . "::Stage";
+  require $location;
 
-	print " [x] Sent TASK on host $host queuename '$queuename': $data->{ mode }: $message\n";
-
-	#$self->logDebug("disconnecting connection");
-	#$connection->disconnect();
+  return $class->new( $stage );
 }
+
+# method sendTask ($queuename, $data) {
+# 	$self->logDebug("queuename", $queuename);
+# 	$self->logDebug("data", $data);
+
+# 	my $processid	=	$$;
+# 	#$self->logDebug("processid", $processid);
+# 	$data->{ processid }	=	$processid;
+
+# 	#### ADD UNIQUE IDENTIFIERS
+# 	$data	=	$self->addTaskIdentifiers($data);
+
+# 	my $parser = JSON->new();
+# 	my $message = $parser->encode($data);
+# 	$self->logDebug("message", substr($message, 0, 1000));
+
+# 	#### GET HOST
+# 	my $host		=	$self->conf()->getKey( "mq:host", undef);
+# 	$self->logDebug("host", $host);
+
+# 	#### GET CONNECTION
+# 	my $connection	=	$self->newConnection();
+
+# 	my $channelid = 1;
+# 	my $channel = $connection->channel_open($channelid);
+
+# 	$connection->queue_declare(
+# 		$channelid,
+# 		$queuename,
+# 		{
+# 			queue 	=> $queuename,
+# 			durable => 1,
+# 			auto_delete => 0
+# 		}
+# 	);
+	
+# 	$connection->publish(
+# 		$channelid,
+# 		$queuename,
+# 		$message,
+# 		{
+# 			routing_key => $queuename,
+# 			exchange => ""
+# 		}
+# 	);
+
+# 	print " [x] Sent TASK on host $host queuename '$queuename': $data->{ mode }: $message\n";
+
+# 	#$self->logDebug("disconnecting connection");
+# 	#$connection->disconnect();
+# }
 
 method addTaskIdentifiers ($task) {
 	#### SET TIME
 	$task->{time}		=	$self->getMysqlTime();
 	
 	##### SET IP ADDRESS
-	my $ipaddress			=	`facter ipaddress`;
+	my $ipaddress			=	 $self->getIpAdress();
 	$ipaddress				=~	s/\s+$//;
 	$task->{ipaddress}		=	$ipaddress;
 

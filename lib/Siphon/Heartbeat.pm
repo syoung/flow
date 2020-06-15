@@ -29,7 +29,7 @@ class Siphon::Heartbeat with (Util::Logger, Exchange, Util::Timer) {
 
 use FindBin qw($Bin);
 use TryCatch;
-
+use Table::Main;
 
 # Integers
 has 'log'	=> ( isa => 'Int', 		is => 'rw', default	=> 	2	);  
@@ -37,7 +37,8 @@ has 'printlog'	=> ( isa => 'Int', 		is => 'rw', default	=> 	2	);
 has 'sleep'		=>  ( isa => 'Int', is => 'rw', default => 60 );
 
 # Strings
-has 'exchange'	=> ( isa => 'Str|Undef', is => 'rw', default	=>	"inbound.host.status" );
+has 'processname' => ( is => 'Str', is => 'rw', default => "heartbeat" );
+has 'queue'	=> ( isa => 'Str|Undef', is => 'rw', default	=>	"inbound.host.heartbeat" );
 has 'database'	=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
 has 'command'	=> ( isa => 'Str|Undef', is => 'rw'	);
 has 'logfile'	=> ( isa => 'Str|Undef', is => 'rw'	);
@@ -57,12 +58,26 @@ has 'table'		=>	(
 	builder		=>	"setTable"
 );
 
+method setTable () {
+  my $table = Table::Main->new({
+    conf      =>  $self->conf(),
+    log       =>  $self->log(),
+    printlog  =>  $self->printlog(),
+    logfile   =>  $self->logfile()
+  });
 
+  $self->table($table); 
+}
 
-method initialise ($hash) {
-	#### SET SLOTS
-	$self->setSlots($hash);
-	$self->logDebug("AFTER self->setSlots()");
+method BUILD ($args) {
+	$self->killProcesses( $self->processname() );	
+}
+
+method killProcesses ( $processname ) {
+	my $processid = $$;
+	$self->logDebug( "processid", $processid );
+	my $ps = "ps aux | grep $processname | grep -v $processid | tr -s ' '| cut -f 2 -d \" \" | xargs -L 1 kill -9";
+	print `$ps`;
 }
 
 method monitor {
@@ -70,24 +85,25 @@ method monitor {
 	$self->logDebug("");
 	
 	while ( 1 ) {
-		#### SEND 'HEARTBEAT' NODE STATUS INFO
-		$self->logDebug("DOING self->heartbeat");
+		#### SEND host STATUS
 		$self->heartbeat();
 
-		$self->logDebug("DOING self->checkWorker");
+		#### CHECK worker IS RUNNING, RESTART IF NOT
 		$self->checkWorker();
 
+		#### PAUSE
 		my $sleep	=	$self->sleep();
-		print "Siphon::Heartbeat::monitor    Sleeping $sleep seconds before checkWorker\n";
+		print "Siphon::Heartbeat::monitor    Sleeping $sleep seconds\n";
 		sleep($sleep);
 	}	
 }
 
 #### HEARTBEAT
 method heartbeat {
-	
 	my $time		=	$self->getMysqlTime();
+	$self->logDebug( "time", $time );
 	my $host		=	$self->getHostname();
+	$self->logDebug( "host", $host );
 	my $ipaddress	=	$self->getIpAddress();
 	$self->logDebug("ipaddress", $ipaddress);
 
@@ -105,8 +121,9 @@ method heartbeat {
 	my $io		=	$self->getIo();
 	#$self->logDebug("io", $io);
 	
-	my $nfsio	=	$self->getNfsIo();
+	# my $nfsio	=	$self->getNfsIo();
 	#$self->logDebug("nfsio", $nfsio);
+	my $nfsio = "";
 
 	my $disk	=	$self->getDisk();
 	#$self->logDebug("disk", $disk);
@@ -115,24 +132,34 @@ method heartbeat {
 	#$self->logDebug("memory", $memory);
 		
 	my $data	=	{
-		queue		=>	$self->queue(),
-		host		=>	$host,
+		queue		  =>	$self->queue(),
+		host		  =>	$host,
 		ipaddress	=>	$ipaddress,
-		cpu			=>	$cpu,
-		io			=>	$io,
-		nfsio		=>	$nfsio,
-		disk		=>	$disk,
+		cpu			  =>	$cpu,
+		io			  =>	$io,
+		nfsio		  =>	$nfsio,
+		disk		  =>	$disk,
 		memory		=>	$memory,
-		time		=>	$time,
-		mode		=>	"updateHeartbeat"
+		time		  =>	$time,
+		mode		  =>	"updateHeartbeat"
 	};
 	#$self->logDebug("data", $data);
 
 	try {
 		$self->sendTask($self->queue(), $data);
+
 	}
 	catch {
-		$self->logDebug("FAILED TO SEND HEARTBEAT", $data);
+		$self->logDebug( "FAILED TO SEND HEARTBEAT" );
+	}
+
+	try {
+		print "BEFORE updateHeartbeat\n";
+		$self->updateHeartbeat( $data );		
+	}
+	catch {
+		$self->logDebug( "FAILED TO UPDATE DATABASE. ADDING TO failed TABLE" );
+		$self->addToFailed( $data );
 	}
 }
 
@@ -162,7 +189,7 @@ method checkWorker {
 	my $logfile		=	"/var/log/upstart/$name.log";
 	
 	$self->logDebug("logfile", $logfile);
-	print "Returning. Can't find logfile: $logfile\n" and return if not -f $logfile;
+	print "Skipping checkWorker as file missing: $logfile\n" and return if not -f $logfile;
 
 	my $command		=	"tail $logfile";
 	$self->logDebug("command", $command);
@@ -207,6 +234,38 @@ method restartUpstart ($name, $logfile) {
 	$self->logDebug("END");
 }
 
+method updateHeartbeat ($data) {
+	$self->logDebug("data->{host}", $data->{host});
+	$self->logDebug("data->{time}", $data->{time});
+
+	my $time = $data->{ time };
+	my $keys	=	[ "host", "time" ];
+	my $notdefined	=	$self->table()->db()->notDefined($data, $keys);	
+	$self->logDebug("notdefined", $notdefined) and return if @$notdefined;
+
+	#### ADD TO TABLE
+	my $table		=	"heartbeat";
+	my $fields		=	$self->table()->db()->fields($table);
+	$self->table()->_addToTable($table, $data, $keys, $fields);
+}
+
+method  ($data) {
+	my $time = $data->{ time };
+	my $host = $data->{ host };
+
+	my $table		=	"failed";
+	my $source  = "heartbeat";
+	my $entry = {
+		source => $source,
+		time   => $time,
+		time   => $host,
+		data   => $data
+	};
+
+	my $keys    = [ "time", "host" ];
+	my $fields	=	$self->table()->db()->fields($table);
+	$self->table()->_addToTable($table, $entry, $keys, $fields);
+}
 
 
 }

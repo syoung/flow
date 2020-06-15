@@ -29,70 +29,92 @@ PURPOSE
 use strict;
 use warnings;
 
-class Siphon::Listener with (Logger, Exchange, Agua::Common::Database, Agua::Common::Timer, Agua::Common::Project, Agua::Common::Stage, Agua::Common::Workflow, Agua::Common::Util) {
+class Siphon::Listener with (Util::Logger, Util::Timer,Exchange) {
 
 #### EXTERNAL
 use Getopt::Long;
 Getopt::Long::Configure(qw(no_ignore_case bundling pass_through));
 
-{
-
-# Integers
-has 'log'	=>  ( isa => 'Int', is => 'rw', default => 2 );
-has 'printlog'	=>  ( isa => 'Int', is => 'rw', default => 5 );
-has 'maxjobs'	=>  ( isa => 'Int', is => 'rw', default => 1 );
-has 'sleep'		=>  ( isa => 'Int', is => 'rw', default => 1 );
-
-# Strings
-has 'metric'	=> ( isa => 'Str|Undef', is => 'rw', default	=>	"cpus" );
-has 'user'		=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
-has 'pass'		=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
-has 'host'		=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
-has 'vhost'		=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
-has 'modulestring'	=> ( isa => 'Str|Undef', is => 'rw', default	=> "Agua::Workflow" );
-has 'rabbitmqctl'	=> ( isa => 'Str|Undef', is => 'rw', default	=> "/usr/sbin/rabbitmqctl" );
-
-# Objects
-has 'modules'	=> ( isa => 'ArrayRef|Undef', is => 'rw', lazy	=>	1, builder	=>	"setModules");
-has 'conf'		=> ( isa => 'Conf::Yaml', is => 'rw', required	=>	0 );
-
-# has 'synapse'	=> ( isa => 'Synapse', is => 'rw', lazy	=>	1, builder	=>	"setSynapse" );
-
-has 'db'		=> ( isa => 'Agua::DBase::MySQL', is => 'rw', lazy	=>	1,	builder	=>	"setDbh" );
-
-has 'jsonparser'=> ( isa => 'JSON', is => 'rw', lazy	=>	1, builder	=>	"setParser" );
-
-has 'virtual'	=> ( isa => 'Any', is => 'rw', lazy	=>	1, builder	=>	"setVirtual" );
-
-has 'duplicate'	=> ( isa => 'HashRef|Undef', is => 'rw');
-has 'channel'	=> ( isa => 'Any', is => 'rw', required	=>	0 );
-
-
-}
-
 #### EXTERNAL MODULES
 use FindBin qw($Bin);
 use Test::More;
 
-#### INTERNAL MODULES
-use Virtual::Openstack;
-#use Synapse;
-use Virtual;
+#### INTERNAL
+use Conf::Yaml;
+use Table::Main;
+use Virtual::Factory;
+use sigtrap 'handler' => *Siphon::Listener::killProcesses, 'stack-trace', 'error-signals';
+# use TryCatch;
 
-#####////}}}}}
+# Integers
+has 'log'	=>  ( isa => 'Int', is => 'rw', default => 4 );
+has 'printlog'	 =>  ( isa => 'Int', is => 'rw', default => 5 );
+has 'maxjobs'	   =>  ( isa => 'Int', is => 'rw', default => 1 );
+has 'sleep'		   =>  ( isa => 'Int', is => 'rw', default => 1 );
+has 'messages'	 =>  ( isa => 'Int', is => 'rw', default => 0 );
 
-method BUILD ($args) {
-	$self->initialise($args);	
+# Strings
+has 'processname' => ( is => 'Str', is => 'rw', default => "listener" );
+has 'queuename'	=> ( isa => 'Str|Undef', is => 'rw', default	=>	"inbound.host.heartbeat" );
+has 'metric'	   => ( isa => 'Str|Undef', is => 'rw', default	=>	"cpus" );
+has 'user'		   => ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
+has 'pass'		   => ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
+has 'host'		   => ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
+has 'vhost'		   => ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
+has 'modulestring'	=> ( isa => 'Str|Undef', is => 'rw', default	=> "Agua::Workflow" );
+has 'rabbitmqctl'	=> ( isa => 'Str|Undef', is => 'rw', default	=> "/usr/sbin/rabbitmqctl" );
+
+# Objects
+has 'modules'	   => ( isa => 'ArrayRef|Undef', is => 'rw', lazy	=>	1, builder	=>	"setModules");
+has 'conf'		   => ( isa => 'Conf::Yaml', is => 'rw', required	=>	0 );
+
+has 'jsonparser' => ( isa => 'JSON', is => 'rw', lazy	=>	1, builder	=>	"setParser" );
+
+has 'virtual'	   => ( isa => 'Any', is => 'rw', lazy	=>	1, builder	=>	"setVirtual" );
+
+has 'duplicate'  => ( isa => 'HashRef|Undef', is => 'rw');
+has 'channel'	   => ( isa => 'Any', is => 'rw', required	=>	0 );
+
+
+has 'table'		=>	(
+	is 			=>	'rw',
+	isa 		=>	'Table::Main',
+	lazy		=>	1,
+	builder		=>	"setTable"
+);
+
+method setTable () {
+  my $table = Table::Main->new({
+    conf      =>  $self->conf(),
+    log       =>  $self->log(),
+    printlog  =>  $self->printlog(),
+    logfile   =>  $self->logfile()
+  });
+
+  $self->table($table); 
 }
 
-method initialise ($args) {
-	#$self->logDebug("args", $args);
-	#$self->manage();
+method BUILD ($args) {
+  #### SET LOGS
+  $self->log( $args->{ log } ) if defined $args->{ log };
+  $self->printlog( $args->{ printlog } ) if defined $args->{ printlog };
+
+  #### KILL EXISTING PROCESSES
+	$self->killProcesses( $self->processname() );	
+}
+
+method killProcesses ( $processname ) {
+	$self->logDebug( "processname", $processname );
+	my $processid = $$;
+	$self->logDebug( "processid", $processid );
+	my $ps = "ps aux | grep $processname | grep -v $processid | tr -s ' '| cut -f 2 -d \" \" | xargs -L 1 kill -9";
+	print `$ps`;
 }
 
 method run ($args) {
 
-	my $installdir	=	$ENV{'installdir'} || "/a";
+	my $installdir	=	$ENV{'FLOW_HOME'};
+
 	my $logfile     =   "$installdir/log/listener.log";
 	my $json 		=	undef;
 	my $help;
@@ -132,88 +154,48 @@ method run ($args) {
 method listen {
 	$self->logDebug("");
 	
-	my $taskqueues	=	["update.job.status", "update.host.status"];
+	my $queuename	=	$self->queuename();
 	my $handler 	=	*Siphon::Listener::handleTask;
-	$self->receiveTask($taskqueues, $handler);
-}
-
-#### TASKS
-method receiveTask ($taskqueues, $handler) {
-	# my $exchange = "gravity.checks";
-	#$self->logDebug("taskqueues", $taskqueues);
-
-	my $host		=	$self->host() || $self->conf()->getKey( "mq:host", undef);
-	$host = "localhost";
-	$self->logDebug("host", $host);
-
-	#### OPEN CONNECTION
-	my $connection	=	$self->newConnection();	
-	my $channelid  = 1;
-	my $channel = $connection->channel_open($channelid);
-	
-	$connection->basic_qos($channelid,{ prefetch_count => 1 });
-	
-	my %declare_opts = (
-		durable => 1,
-		auto_delete => 0
-	);
-
-	foreach my $taskqueue ( @$taskqueues ) {
-		$self->logDebug("taskqueue", $taskqueue);
-		$self->logDebug("DOING connection->queue_declare($channelid, $taskqueue, declare_opts", \%declare_opts);
-
-		$connection->queue_declare($channelid, $taskqueue, \%declare_opts);
-
-		my %consume_opts = (
-			exchange => $taskqueue,
-			routing_key =>  ""
-		);
-		$connection->consume($channelid, $taskqueue, \%consume_opts);
-	}
-							
-	#### NB: recv IS BLOCKING
-	my $this	=	$self;
-	while ( my $payload = $connection->recv() ) {
-		last if not defined $payload;
-		my $body  = $payload->{body};
-		print " [x] Received task on host $host: ", substr($body, 0, 500) , "\n";
-	
-		my $dtag  = $payload->{delivery_tag};
-	
-		#### RUN TASK
-		&$handler($this, $body);
-		
-		my $sleep	=	$self->sleep();
-		print "Sleeping $sleep seconds\n";
-		sleep($sleep);
-			
-		#### SEND ACK AFTER TASK COMPLETED
-		$connection->ack($channelid,$dtag,);
-	}		
-	
-	#### SET self->connection
-	$self->connection($connection);
-	
-	# Wait forever
-	AnyEvent->condvar->recv;	
+	$self->receiveTask( $queuename, $handler );
 }
 
 method handleTask ($json) {
-	#$self->logDebug("json", substr($json, 0, 200));
+	$self->logDebug("json", substr($json, 0, 200));
 
 	my $data = $self->jsonparser()->decode($json);
 	#$self->logDebug("data", $data);
 
 	my $mode =	$data->{mode} || "";
-	#$self->logDebug("mode", $mode);
+	$self->logDebug("mode", $mode);
 	
-	if ( $self->can($mode) ) {
-		$self->$mode($data);
+	my $supported = [ "updateJobStatus", "updateHeartbeat" ];
+	if ( not $self->memberOfArray( $supported, $mode ) ) {
+		print "Mode not supported: $mode\n";
+		return;
 	}
-	else {
-		print "mode not supported: $mode\n";
-		$self->logDebug("mode not supported: $mode");
+
+	$SIG{DIE} = *Siphon::Listener::killProcesses;
+	$SIG{WARN} = *Siphon::Listener::killProcesses;
+	$SIG{INT} = *Siphon::Listener::killProcesses;
+
+
+	try {
+		print "INSIDE TRY\n";
+		$self->$mode($data);		
 	}
+	catch {
+		print "INSIDE CATCH\n";
+		$self->logCritical( "Failed to handle task mode: $mode\n" );
+		print "Failed to handle task mode: $mode\n";
+	}
+}
+
+method memberOfArray ( $array, $value ) {
+	foreach my $entry ( @$array ) {
+		return 1 if $entry eq $value;
+	}
+
+	return 0;
 }
 
 method notDefined ($hash, $fields) {
@@ -242,16 +224,25 @@ method updateJobStatus ($data) {
 }
 
 method updateHeartbeat ($data) {
-	$self->logDebug("host $data->{host} $data->{ipaddress} [$data->{time}]");
-	#$self->logDebug("data", $data);
+	$self->logDebug("data->{host}", $data->{host});
+	$self->logDebug("data->{time}", $data->{time});
+
 	my $keys	=	[ "host", "time" ];
 	my $notdefined	=	$self->notDefined($data, $keys);	
 	$self->logDebug("notdefined", $notdefined) and return if @$notdefined;
 
 	#### ADD TO TABLE
 	my $table		=	"heartbeat";
-	my $fields		=	$self->db()->fields($table);
-	$self->_addToTable($table, $data, $keys, $fields);
+	my $fields		=	$self->table()->db()->fields($table);
+	$self->logDebug( "keys", $keys );
+	$self->logDebug( "fields", $fields );
+
+	try {
+		$self->table()->_addToTable($table, $data, $keys, $fields);
+	}
+	catch {
+		print "FAILED TO ADD TO TABLE: $table\n";
+	}
 }
 
 method updateProvenance ($data) {

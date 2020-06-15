@@ -33,47 +33,40 @@ use Getopt::Long;
 use FindBin qw($Bin);
 #use Net::RabbitFoot;
 	
-#### USE LIBRARY
+#### USE LIBRARY4x
 use lib "$Bin/../../lib";	
-BEGIN {
-    my $installdir = $ENV{'installdir'} || "/a";
-    unshift(@INC, "$installdir/extlib");
-    unshift(@INC, "$installdir/lib");
-}
 
 #### INTERNAL MODULES
 use Conf::Yaml;
 use JSON;
 
-my $installdir 	=	 $ENV{'installdir'} || "/a";
-my $configfile	=	"$installdir/conf/config.yml";
+#### SET CONF FILE
+my $installdir  =   $ENV{'FLOW_HOME'};
+if ( not defined $installdir ) {
+  print "Can't find environment variable: FLOW_HOME\n";
+  exit;
+}
+my $configfile  =   "$installdir/conf/config.yml";
 
 my $message		=	"";
-my $queuename   =   "chat";
-
-my $host		=	'localhost';
-my $port		=	5672;
-my $user		=	'guest';
-my $pass		=	'guest';
-my $vhost		=	'/';
-my $callback	=	"";
+my $queue       =   "chat";
 
 my $log			=	2;
 my $printlog	=	2;
 my $help;
 
 #### SET LOGFILE
-my $logfile		=	"/tmp/pancancer-volume.$$.log";
+my $logfile		=	"/tmp/sendtask.$$.log";
 
 GetOptions (
     'message=s'     => \$message,
-    'queuename=s'   => \$queuename,
+    'queue=s'   => \$queue,
 
-    'host=s'		=> \$host,
-    'port=s'		=> \$port,
-    'user=s'		=> \$user,
-    'pass=s'		=> \$pass,
-    'vhost=s'		=> \$vhost,
+    # 'host=s'		=> \$host,
+    # 'port=s'		=> \$port,
+    # 'user=s'		=> \$user,
+    # 'pass=s'		=> \$pass,
+    # 'vhost=s'		=> \$vhost,
     'callback=s'	=> \$callback,
 
     'log=i'     	=> \$log,
@@ -92,11 +85,18 @@ my $conf = Conf::Yaml->new(
     logfile     =>  $logfile
 );
 
+my $host        =   $conf->getKey( "mq:host" ) || "localhost";
+my $port        =   $conf->getKey( "mq:port" ) || 5672; 
+my $user        =   $conf->getKey( "mq:user" ) || "guest";
+my $pass        =   $conf->getKey( "mq:pass" ) || "guest";
+my $vhost       =   $conf->getKey( "mq:vhost" ) || "/";
+my $callback    =   "";
+
+
 #######################################################################################
 package Object;
 use Moose;
-with 'Exchange';
-with ('Logger', 'Exchange', 'Agua::Common::Database');
+with ('Util::Logger', 'Exchange');
 
 # Integers
 has 'showlog'	=>  ( isa => 'Int', is => 'rw', default => 2 );
@@ -136,7 +136,7 @@ my $object = Object->new({
 
 my $jsonparser	=	JSON->new();
 my $data		=	$jsonparser->decode($message);
-$object->sendTask($queuename, $data);
+$object->sendTask( $queue, $data );
 
 exit 0;
 

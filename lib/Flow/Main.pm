@@ -329,6 +329,10 @@ method describeUsage () {
 	return "\nUSAGE: flow (desc|describe) <projectname> [workflowname/workflownumber]\n\n";
 }
 
+=head
+	Print out detailed contents of all workflows belonging to a project
+
+=cut
 method describe ( $projectname = undef, $workflowid = undef ) {
 	$self->logDebug("projectname", $projectname);
 	$self->logDebug("workflowid", $workflowid);
@@ -564,6 +568,11 @@ method getDatetime( $string ) {
    );
 }
 
+
+=head
+	Print out commands for all workflows belonging to a project
+
+=cut
 method cli ( $projectname ) {
 	$self->logDebug("projectname", $projectname);
 
@@ -591,16 +600,18 @@ method cli ( $projectname ) {
 		$self->logDebug( "output", $output );
 		
 		#### HANDLE PROFILE
-		my $profile = $workflow->{profile};
-		$self->logDebug( "profile", $profile );
-		if ( $profile and $profile ne "" ) {
-			$output .= "  Profile: $workflow->{profile}\n";
+		my $workflowprofile = $workflow->{profile};
+		$self->logDebug( "worfklowprofile", $workflowprofile );
+		if ( $workflowprofile and $workflowprofile ne "" ) {
+			$output .= "  Profile: $workflowprofile\n";
 		}
 		
 		my $command = "";
 		my $apps = $workflow->{apps};
 		$self->logDebug( "apps", $apps );
 		
+		my $profile = Util::Profile->new();
+
 		my $appindex = 0;
 		foreach my $app ( @$apps ) {
 			$appindex++;
@@ -609,8 +620,11 @@ method cli ( $projectname ) {
 			my $path = $app->{installdir} . "/" . $app->{location};
 			$self->logDebug( "path", $path );
 			$command .= $path . " ";
-			my $profiledata = $app->{ profile };
-			$self->logDebug( "profiledata", $profiledata );
+			my $string = $app->{ profile };
+			$self->logDebug( "string", $string );
+			my $profilehash = $profile->yamlToData( $string );
+			$self->logDebug( "profilehash", $profilehash );
+			$profile->profilehash( $profilehash );
 
 			my $parameters = $app->{parameters};
 			foreach my $parameter ( @$parameters ) {
@@ -621,7 +635,7 @@ method cli ( $projectname ) {
 
 				my $value = $parameter->{ value };
 				if ( defined $value ) {
-					$value = $self->replaceString( $profiledata, $value ); 
+					$value = $profile->replaceString( $value ); 
 					$value = $self->replaceWorkflowTags( $username, $projectname, $workflowname, $value );
 					$command .= $value . " ";
 				}
@@ -1338,12 +1352,12 @@ method getProfileYaml ( $profiles, $profilename ) {
 
 	return "" if not $profilename;
 
-	my $profile = $self->doProfileInheritance( $profiles, $profilename );
-	$self->logDebug( "profile", $profile );
+	my $profilehash = $self->setProfileHash( $profiles, $profilename );
+	$self->logDebug( "profilehash", $profilehash );
 
 	my $yaml = YAML::Tiny->new();
-	$$yaml[ 0 ] = $profile;
-	my $profileyaml = $yaml->write_string( $profile );
+	$$yaml[ 0 ] = $profilehash;
+	my $profileyaml = $yaml->write_string( $profilehash );
 
 	return $profileyaml;
 }
@@ -1698,7 +1712,7 @@ method runWorkflow ( $projectname, $workflowid ) {
 	
 	#### SET WORKFLOW HASH
 	my $workflowhash=	$self->getWorkflow( $username, $projectname, $workflowname );	
-	print "Project '$projectname' workflow not found: $workflowname\n" and exit if not defined $workflowhash;
+	print "Project '$projectname' workflow not found: $workflowname\n" and exit if not defined $workflowhash or not %$workflowhash;
 	$workflowhash->{dryrun}		=	$dryrun;
 	$workflowhash->{first}		=	$first;
 	$self->logDebug( "workflowhash", $workflowhash, 1 );
@@ -1778,11 +1792,14 @@ method stageFactory ( $stage ) {
 	my $profilehash = $stage->{profilehash};
 	# $self->logDebug( "profilehash", $profilehash );
 
-	my $runtype = $self->getProfileValue( "run:type", $profilehash );
+	my $profile = Util::Profile->new();
+	$profile->profilehash( $profilehash );
+
+	my $runtype = $profile->getProfileValue( "run:type" );
 	$runtype = "Shell" if not $runtype;
-	my $hostname = $self->getProfileValue( "host:name", $profilehash );
+	my $hostname = $profile->getProfileValue( "host:name" );
 	$hostname = "Local" if not $hostname;
-	my $virtual = $self->getProfileValue( "virtual", $profilehash );
+	my $virtual = $profile->getProfileValue( "virtual" );
 	$virtual = "Local" if not $virtual;
 	$self->logDebug( "runtype", $runtype );
 	$self->logDebug( "hostname", $hostname );
@@ -1817,7 +1834,7 @@ method getHostType ( $hostname, $virtual ) {
 	
 	return "Remote" if defined $virtual;
 
-	use Sys::Hostname;
+	# use Sys::Hostname;
   my $thishost = hostname || "";
 
 	$self->logDebug( "thishost", $thishost );
@@ -1848,6 +1865,8 @@ method cowCase ( $string ) {
 method setStages ( $workflowhash, $samplehash ) {
   
   # $self->logGroup( "Flow::Main::setStages" );
+  $self->logDebug( "workflowhash", $workflowhash );
+  $self->logDebug( "samplehash", $samplehash );
 
   my $username             =    $workflowhash->{username};
   my $projectname          =    $workflowhash->{projectname};
@@ -1911,9 +1930,10 @@ method setStages ( $workflowhash, $samplehash ) {
     $stage->{stageparameters} = [] if not defined $stage->{stageparameters};
 
     #### GET PROFILEHASH
-    my $profile = $stage->{profile};
-    $self->logDebug( "profile", $profile );
-		$stage->{profilehash}  =    $self->yamlToData( $profile );
+    my $profileyaml = $stage->{profile};
+    $self->logDebug( "profileyaml", $profileyaml );
+    my $profile = Util::Profile->new();
+		$stage->{profilehash}  =    $profile->yamlToData( $profileyaml );
 
     $stage->{username}     =    $username;
     $stage->{workflowpid}  =    $workflowpid;
@@ -2187,9 +2207,13 @@ method launchVM ( $stageobject ) {
   my $profilehash      =    $stageobject->{ profilehash };
   $self->logDebug( "profilehash", $profilehash );
   return $stageobject if not defined $profilehash;
-  return $stageobject if not defined $self->getProfileValue( "virtual", $profilehash );
 
-  my $virtualtype = $self->getProfileValue( "virtual:type", $profilehash );
+	my $profiler = Util::Profile->new();
+	$profiler->profilehash( $profilehash );
+
+  return $stageobject if not defined $profiler->getProfileValue( "virtual" );
+
+  my $virtualtype = $profiler->getProfileValue( "virtual:type" );
   $self->logDebug( "virtualtype", $virtualtype );
   my $virtual = $self->setVirtual( $virtualtype );
   # $self->logDebug( "self->virtual()", $self->virtual() );
@@ -2198,14 +2222,14 @@ method launchVM ( $stageobject ) {
 
   #### GET VALUES UPDATED BY getProfileValue
   $profilehash      =    $stageobject->{ profilehash };
-  my $ipaddress = $self->getProfileValue( "instance:ipaddress", $profilehash );
+  my $ipaddress = $profiler->getProfileValue( "instance:ipaddress", $profilehash );
   $self->logDebug( "ipaddress", $ipaddress );
 
   #### LAUNCH NODE IF NO IPADDRESS FOUND
   if ( not defined $ipaddress ) {
   	$self->logDebug( "DOING virtual->launchNode( stageobject )" );
 		$stageobject = $virtual->launchNode( $stageobject );
-  	$ipaddress = $self->getProfileValue( "instance:ipaddress", $stageobject->{ profilehash } );
+  	$ipaddress = $profiler->getProfileValue( "instance:ipaddress", $stageobject->{ profilehash } );
   	$self->logDebug( "ipaddress", $ipaddress );
   }
 
@@ -2213,8 +2237,8 @@ method launchVM ( $stageobject ) {
   $profilehash      =    $stageobject->{ profilehash };
   # $self->logDebug( "profilehash", $profilehash );
 
-  my $instanceid = $self->getProfileValue( "instance:id", $profilehash );
-  my $instancename = $self->getProfileValue( "instance:name", $profilehash );
+  my $instanceid = $profiler->getProfileValue( "instance:id" );
+  my $instancename = $profiler->getProfileValue( "instance:name" );
 
 	$self->logDebug("instanceid", $instanceid);
 	$self->logDebug("instancename", $instancename);

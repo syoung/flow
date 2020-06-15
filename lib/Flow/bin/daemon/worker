@@ -17,6 +17,35 @@ INPUT
 
     1. FOR MANUAL TESTING, PROVIDE A SUBCOMMAND, E.G.:
 
+        sendTask --queuename outbound.job.queue --message '{
+
+  "username": "admin",
+  "projectname": "test",
+  "workflowname": "sleep",
+  "workflownumber": "1",
+  "stagename": "sleep",
+  "stagenumber": "1",
+  "installdir": "/bin",
+  "location": "sleep",
+  "parameters": {
+    "value": 10   
+  }
+  "queued": "2016-03-09 13:11:01",
+  "status": "queued",
+  "samplehash": {
+    "outputdir": "/data/bam",
+    "sourcebucket": "itmi.cl.macrogen",
+    "targetbucket": "itmi.cl.macrogenqc",
+    "sample": "16032a86-ecba-4377-ae0b-e51aa2623b61",
+    "run": "1509UNHX-0002",
+    "status": "",
+    "project": "QC",
+    "ordinal": "76",
+    "username": "admin",
+    "subject": "GM14057"
+  },
+}'
+
 =cut
 
 #### EXTERNAL MODULES

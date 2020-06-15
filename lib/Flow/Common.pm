@@ -5,6 +5,13 @@ use Method::Signatures::Simple;
 use JSON;
 use Data::Dumper;
 
+use Util::Profile;
+
+has 'profiler'   =>  (
+  is      =>  'rw',
+  isa     =>  'Util::Profiler'
+);
+
 =head2
 
 ROLE        Flow::Common
@@ -16,276 +23,22 @@ PURPOSE
 =cut
 
 #####################
-#### PROFILE METHODS
-#####################
-
-#  METHOD: doProfileInheritance 
-#
-#  PURPOSE: ADD FIELDS FROM ONE OR MORE INHERITED PROFILES.
-#
-#  THE ORDER OF PRIORITY IS "FIRST TO LAST",  I.E., IF THE 
-#
-#  inherits FIELD IS AS FOLLOWS:
-#
-#
-#   testprofile:
-#
-#     inherits : first,second,third
-#
-#
-#  ... THEN:
-#     
-#    1. THE PROFILES first, second AND third MUST ALSO BE PRESENT
-#
-#    IN THE profiles.yml FILE (EXITS IF THIS IS NOT THE CASE)
-#
-#    2. THE FIELDS FROM PROFILE first WILL BE ADDED TO THE FIELDS
-#
-#    IN PROFILE testprofile WITHOUT OVERWRITING EXISTING FIELDS IN
-#
-#    testprofile
-#
-#    3. THE FIELDS IN PROFILE second WILL SIMILARLY BE ADDED TO
-#
-#    PROFILE testprofile WITHOUT OVERWRITING ANY EXISTING FIELDS
-#
-#    4. LASTLY, THE FIELDS IN PROFILE third WOULD BE ADDED WITHOUT
-#
-#    OVERWRITING ANY FIELDS ORIGINALLY IN PROFILE testprofile OR
-#
-#    ADDED TO IT FROM PROFILES first AND second
-#
-method doProfileInheritance ( $profiles, $profilename ) {
-  $self->logDebug( "profiles", $profiles );
-  $self->logDebug( "profilename", $profilename );
-  
-  my $profile = $profiles->{$profilename};
-  my $inherits = $profile->{inherits};
-  $self->logDebug( "inherits", $inherits );
-  if ( not $inherits ) {
-    return $profile;
-  }
-
-  my @inheritedprofiles = split ",", $inherits;
-  foreach my $inheritedprofile ( @inheritedprofiles ) {
-    my $inherited = $profiles->{$inheritedprofile};
-    if ( not $inherited ) {
-      print "Inherited profile '$inheritedprofile' not found in profiles.yml file\n";
-      exit;
-    }
-
-    foreach my $key ( keys %$inherited ) {
-      $self->logDebug( "key", $key );
-      $profile->{ $key } = $self->recurseInheritance ( $profile->{$key}, $inherited->{$key} ); 
-    }
-  }
-
-  $self->logDebug( "RETURNING profile", $profile, 1 );
-
-  return $profile;
-}
-
-method recurseInheritance ( $profilefield, $inheritedfield ) {
-  $self->logDebug( "profilefield", $profilefield );
-  $self->logDebug( "inheritedfield", $inheritedfield );
-
-  #### INHERITED FIELD DOES NOT EXIST IN profile SO ADD IT 
-  if ( not defined $profilefield ) {
-    return $inheritedfield;
-  }
-
-  my $profiletype = ref( $profilefield );
-  my $inheritedtype = ref( $inheritedfield );
-  $self->logDebug( "profiletype", $profiletype );
-  $self->logDebug( "inheritedtype", $inheritedtype );
-
-  if ( $profiletype ne $inheritedtype ) {
-    print "Mismatch between profile data types.\n";
-    print "Original key type: $profiletype\n";
-    print "Inherited key type: $inheritedtype\n";
-    exit;
-  }
-
-  #### IF BOTH ARE ARRAYS, ADD TO PROFILE MISSING ENTRIES 
-  if ( $profiletype eq "HASH" ) {
-
-    foreach my $key ( keys %$inheritedfield ) {
-      $profilefield->{ $key } = $self->recurseInheritance ( $profilefield->{ $key 
-      }, $inheritedfield->{ $key } ); 
-    }
-  }
-  elsif ( $profiletype eq "ARRAY" ) {
-    foreach my $entry ( @$inheritedfield ) {
-      if ( not $self->elementInArray( $profilefield, $entry ) ) {
-        $self->logDebug( "ADDING entry", $entry );
-        push @$profilefield, $entry;
-      }
-    }
-  }
-
-  #### OTHERWISE, KEEP THE EXISTING VALUE IN profile
-  return $profilefield;
-}
-
-method elementInArray ( $array, $entry ) {
-  $self->logDebug( "array", $array );
-  $self->logDebug( "entry", $entry );
-
-  my $x = Dumper( $entry );
-  foreach my $slot ( @$array ) {
-    my $y = Dumper( $slot );
-    if( $x eq $y ) {
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
-method yamlToData ( $text ) {
-  # $self->logDebug( "text", $text );
-  return {} if not $text;
-
-  my $yaml = YAML::Tiny->new();
-  my $yamlinstance = $yaml->read_string( $text );
-  my $data = $yamlinstance->[0];
-  # $self->logDebug( "data", $data );
-
-  return $data;
-}
-
-method dataToYaml ( $data ) {
-  $self->logDebug( "data", $data );
-  return "" if not $data;
-
-  my $yaml = YAML::Tiny->new();
-  $$yaml[ 0 ] = $data;
-  my $text = $yaml->write_string( $data );
-  $text =~ s/\'/\"/g;
-  $self->logDebug( "text", $text );
-
-  return $text;
-}
-
-method getProfileHash ( $profile ) {
-  $self->logDebug( "profile", $profile );
-
-  my $yaml = YAML::Tiny->new();
-  my $yamlobject = $yaml->read_string( $profile );
-  my $data = $$yamlobject[0];
-  # $self->logDebug( "data", $data );
-
-  return $data;
-}
-
-method getProfiles ( $file ) {
-  $self->logDebug( "file", $file );
-
-  return undef if not $file;
-
-  my $yaml = YAML::Tiny->read( $file );
-  
-  return $$yaml[0];
-}
-
-#  METHOD: replaceTags
-#
-#  PURPOSE: ADD FIELDS FROM ONE OR MORE INHERITED PROFILES.
-#
-#  THE ORDER OF PRIORITY IS "FIRST TO LAST",  I.E., IF THE 
-#
-#  inherits FIELD IS AS FOLLOWS:
-#
-#   testprofile:
-#
-#     inherits : first,second,third
-#
-#  THEN THE VALUES IN first WILL OVERRIDE THE VALUES IN second
-#
-#  WHICH WILL, IN TURN, OVERRIDE THE VALUES IN third.
-#
-#  SEE METHOD doProfileInheritance ABOVE FOR DETAILS
-#
-#
-method replaceTags ( $data, $profiledata ) {
-  $self->logDebug( "data", $data );
-  $self->logDebug( "profiledata", $profiledata );
-
-  foreach my $key ( keys %$data ) {
-    # $self->logDebug( "DOING key $key" );
-    my $string = $data->{ $key };
-
-    next if not $string;
-    $data->{ $key } = $self->replaceString( $profiledata, $string );
-    if ( not defined $data->{ $key } ) {
-      $self->logError( "**** PROFILE PARSING FAILED. RETURNING undef TO TRIGGER ROLLBACK ****");
-      return undef;
-    }
-  }
-  # $self->logDebug( "data", $data );
-
-  return $data;
-}
-
-method replaceString( $profiledata, $string ) {
-  # $self->logDebug( "profiledata", $profiledata );
-  $self->logDebug( "string", $string );
-
-  while ( $string =~ /<profile:([^>]+)>/ ) {
-    my $keystring = $1;
-    $self->logDebug( "string", $string );
-    my $value = $self->getProfileValue( $keystring, $profiledata );
-    # $self->logDebug( "value", $value );
-
-    if ( not $value ) {
-      $self->logError( "*** ERROR *** Can't find profile value for key: $keystring ****" );
-      return undef;
-    }
-
-    #### ONLY INSERT SCALAR VALUES
-    if ( ref( $value ) ne "" ) {
-      # print "Profile value is not a string: " . YAML::Tiny::Dump( $value ) . "\n";
-      $self->logError( "Profile value is not a string: " . YAML::Tiny::Dump( $value ) . "\n" );
-      return undef;
-    }
-
-    $string =~ s/<profile:$keystring>/$value/ if defined $value;
-  }
-
-  return $string;
-}
-
-method getProfileValue ( $keystring, $profile ) {
-  $self->logDebug( "keystring", $keystring );
-  my @keys = split ":", $keystring;
-  my $hash = $profile;
-  foreach my $key ( @keys ) {
-    $hash  = $hash->{$key};
-    return undef if not defined $hash;
-    # $self->logDebug("hash", $hash);
-  }
-
-  return $hash;
-}
-
-# method setProfileValue ( $keystring, $profile, $value ) {
-#   $self->logDebug( "keystring", $keystring );
-#   my @keys = split ":", $keystring;
-#   my $hash = $profile;
-#   foreach my $key ( @keys ) {
-#     $hash  = $hash->{$key};
-#     return undef if not defined $hash;
-#     $self->logDebug("hash", $hash);
-#   }
-
-#   return $hash;
-# }
-
-#####################
 #### DATABASE METHODS
 #####################
 
-method stageToDatabase ( $username, $stageobject, $projectname, $workflowname, $workflownumber, $appnumber, $profiledata ) {
+=head
+  Insert stage data into database 'stage' table.
+
+  Arguments:
+  username      String - Name of stage user
+  stageobject   *::Stage instance
+  projectname   String - Name of project
+  workflowname  String - Name of workflow
+  appnumber     String - Number of stage
+  profile       Util::Profile instance
+
+=cut
+method stageToDatabase ( $username, $stageobject, $projectname, $workflowname, $workflownumber, $appnumber, $profile ) {
   $self->logDebug("appnumber", $appnumber);
   
   $self->logCritical("username not defined") and exit if not defined $username;
@@ -306,25 +59,44 @@ method stageToDatabase ( $username, $stageobject, $projectname, $workflowname, $
   delete $stagedata->{parameters};
   #$self->logDebug("AFTER delete, stagedata", $stagedata);
 
-  $self->logDebug( "BEFORE replaceTags    stagedata", $stagedata );
-  $stagedata = $self->replaceTags( $stagedata, $profiledata );
-  $self->logDebug( "AFTER replaceTags    stagedata", $stagedata );
+  $stagedata = $profile->insertProfileValues( $stagedata );
 
-  #### PROFILE
-  my $profilename   = $stagedata->{profilename};
-  my $stageprofile  = $self->doProfileInheritance( $profiledata, $profilename );
-  $stagedata->{profile} = $self->dataToYaml( $stageprofile );
- $self->logDebug( "stagedata", $stagedata );
+  $stagedata->{profile} = $profile->getProfileYaml();
+  $self->logDebug( "stagedata", $stagedata );
 
   #### REMOVE STAGE
   my $success = $self->table()->_deleteStage($stagedata);
-  print "Can't remove stage: " . Dump $stagedata . "\n" if not $success;
-
+  $self->logDebug( "_deleteStage    success", $success );
+  
   #### ADD STAGE
-  return $self->table()->_addStage($stagedata);
+  $success = $self->table()->_addStage($stagedata);
+  if ( not $success ) {
+    my $dump = YAML::Tiny::Dump( $stagedata );
+    $self->logDebug( "FAILED TO SAVE STAGE", $dump );
+    print "Failed to load stage: $dump\n";
+    exit;
+  }
+
+  return $success;
 }
 
-method stageParameterToDatabase ( $username, $package, $installdir, $stage, $parameterobject, $projectname, $workflowname, $workflownumber, $stagenumber, $paramnumber, $profiledata ) {
+=head
+  Insert parameter data into database 'stageparameter' table.
+
+  Arguments:
+  username      String - Name of stage user
+  package       String - Name of package
+  stageobject   Flow::Stage instance
+  parameterobject   Flow::Parameter instance
+  projectname   String - Name of project
+  workflowname  String - Name of workflow
+  workflownumber  String - Number of workflow
+  stagenumber   String - Number of stage
+  paramnumber   String - Number of parameter
+  profile       Util::Profile instance
+
+=cut
+method stageParameterToDatabase ( $username, $package, $installdir, $stageobject, $parameterobject, $projectname, $workflowname, $workflownumber, $stagenumber, $paramnumber, $profile ) {
   $self->logNote("parameterobject", $parameterobject);
   $self->logDebug("stagenumber", $stagenumber);
   
@@ -340,9 +112,9 @@ method stageParameterToDatabase ( $username, $package, $installdir, $stage, $par
   $paramdata->{username}    = $username;
   $paramdata->{package}   = $package;
   $paramdata->{installdir}  = $installdir;
-  $paramdata->{appname}   = $stage->appname();
-  $paramdata->{owner}     = $stage->owner() || $username;
-  $paramdata->{version}   = $stage->version();
+  $paramdata->{appname}   = $stageobject->appname();
+  $paramdata->{owner}     = $stageobject->owner() || $username;
+  $paramdata->{version}   = $stageobject->version();
   $paramdata->{ordinal}   = $paramnumber if not defined $paramdata->{ordinal};
   $self->logDebug("AFTER paramdata", $paramdata); 
 
@@ -351,9 +123,7 @@ method stageParameterToDatabase ( $username, $package, $installdir, $stage, $par
     $paramdata->{paramname} =~ s/^\-+//g;
   }
 
-  $self->logDebug( "BEFORE replaceTags    paramdata", $paramdata );
-  $paramdata = $self->replaceTags( $paramdata, $profiledata );
-  $self->logDebug( "AFTER replaceTags    paramdata", $paramdata );
+  $paramdata = $profile->insertProfileValues( $paramdata );
   if ( not defined $paramdata ) {
     return undef;
   }

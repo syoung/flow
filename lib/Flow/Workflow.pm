@@ -18,6 +18,7 @@ use YAML::Tiny;
 use Flow::App;
 use Conf::Yaml;
 use Table::Main;
+use Util::Profile;
 
 #### Int
 has 'workflownumber'	=> ( isa => 'Int|Undef', is => 'rw', default	=>	1	);
@@ -522,16 +523,21 @@ method saveWorkflowToDatabase ($workflowobject) {
 	$self->logDebug("workflowdata", $workflowdata);
 	my $keys = ['owner', 'username', 'projectname', 'workflowname', 'workflownumber'];
 	
-	my $profileyaml = $workflowdata->{profiles};
-	my $profiledata = $self->yamlToData( $profileyaml );
-	$self->logDebug( "profiledata", $profiledata );
+	my $profiles = $workflowdata->{profiles};
+	my $profilename = $workflowdata->{profilename};
+	$self->logDebug( " ************ DOING Util::Profile->new() ************ " );
 
-	if ( $profiledata ) {
-		$workflowdata = $self->replaceTags( $workflowdata, $profiledata );
+	$self->logDebug( "profiles", $profiles );
+	$self->logDebug( "profilename", $profilename );
+
+	my $profile = Util::Profile->new( profilestring => $profiles,	profilename => $profilename );
+
+	if ( defined $profile->profilehash() ) {
+		$workflowdata = $profile->insertProfileValues( $workflowdata );
 		if ( not defined $workflowdata ) {
-			print "Failure in Flow::Workflow::replaceTags method.\n";
+			print "Flow::Workflow::saveWorkflowToDatabase --- Failed to insert profile values. Exiting.\n";
 			print "workflowdata: " . YAML::Tiny::Dump( $workflowdata ) . "\n";
-			print "profiledata: " . YAML::Tiny::Dump( $profiledata ) . "\n";
+			print "profilehash: " . YAML::Tiny::Dump( $profile->profilehash() ) . "\n";
 			exit;
 		}
 	}
@@ -550,31 +556,24 @@ method saveWorkflowToDatabase ($workflowobject) {
 	foreach my $stageobject ( @$stageobjects ) {
 		#$self->logDebug("stageobject", $stageobject);
 		last if not $success;
-
-		my $stagenumber 	= $stageobject->{ appnumber };
-		my $package			  =	$stageobject->{package};
-		my $installdir		=	$stageobject->{ installdir };
-		my $profilename   = $stageobject->{ profilename };
-		if ( not $profilename ) {
-			$profilename = $workflowprofilename;
+     
+		my $stagenumber 	     =  $stageobject->{ appnumber };
+		my $package			       =	$stageobject->{ package };
+		my $installdir		     =	$stageobject->{ installdir };
+		my $stageprofilename   =  $stageobject->{ profilename };
+		if ( not $stageprofilename ) {
+			$stageprofilename = $workflowprofilename;
+			$stageobject->{ profilename } = $stageprofilename;
 		}
-
-		my $stageprofile  = $self->doProfileInheritance( $profiledata, $profilename );
-		$self->logDebug( "profilename", $profilename );
-		$self->logDebug( "stageprofile", $stageprofile );
+		$self->logDebug( "profilename", $stageprofilename );
+		if ( defined $profilename ) {
+			$profile->setProfileHash( $stageprofilename );
+		}
 
 		#### ADD STAGE	
-		my $stagecompleted = $self->stageToDatabase( $username, $stageobject, $projectname, $workflowname, $workflownumber, $stagenumber, $profiledata );
-		$self->logDebug( "stagecompleted", $stagecompleted );
+		my $success = $self->stageToDatabase( $username, $stageobject, $projectname, $workflowname, $workflownumber, $stagenumber, $profile );
+		$self->logDebug( "success", $success );
 		
-		if ( not $stagecompleted ) {
-			my $stagedata = $stageobject->exportData();
-			$stagedata->{profile} = $profiledata->{ $profilename };
-			print "Failed to load stage: " . YAML::Tiny::Dump( $stagedata ) . "\n";
-			$success = 0;
-			last;
-		}
-
 		#### PARAMETERS
 		my $parameterobjects = $stageobject->parameters();
 		$self->logDebug("no. parameterobjects", scalar(@$parameterobjects));
@@ -583,7 +582,7 @@ method saveWorkflowToDatabase ($workflowobject) {
 			$paramnumber++;
 			
 			#### ADD PARAMETER
-			my $paramcompleted = $self->stageParameterToDatabase( $username, $package, $installdir, $stageobject, $parameterobject, $projectname, $workflowname, $workflownumber, $stagenumber, $paramnumber, $stageprofile );
+			my $paramcompleted = $self->stageParameterToDatabase( $username, $package, $installdir, $stageobject, $parameterobject, $projectname, $workflowname, $workflownumber, $stagenumber, $paramnumber, $profile );
 			$self->logDebug( "paramcompleted", $paramcompleted );
 
 			if ( not $paramcompleted ) {

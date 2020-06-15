@@ -1,12 +1,4 @@
-#!/usr/bin/perl -w
-
-BEGIN {
-    my $installdir = $ENV{'installdir'} || "/a";
-    unshift(@INC, "$installdir/extlib/lib/perl5");
-    unshift(@INC, "$installdir/extlib/lib/perl5/x86_64-linux-gnu-thread-multi/");
-    unshift(@INC, "$installdir/lib");
-}
-
+#!/usr/bin/env perl
 
 
 =head2
@@ -40,16 +32,16 @@ use Net::RabbitFoot;
 	
 #### USE LIBRARY
 use lib "$Bin/../../lib";	
-BEGIN {
-    my $installdir = $ENV{'installdir'} || "/a";
-    unshift(@INC, "$installdir/extlib");
-    unshift(@INC, "$installdir/lib");
-}
 
 #### INTERNAL MODULES
 use Conf::Yaml;
 
-my $installdir 	=	 $ENV{'installdir'} || "/a";
+#### SET CONF FILE
+my $installdir  =   $ENV{'FLOW_HOME'};
+if ( not defined $installdir ) {
+  print "Can't find environment variable: FLOW_HOME\n";
+  exit;
+}
 my $configfile	=	"$installdir/conf/config.yml";
 
 #### SET LOGFILE
@@ -70,11 +62,11 @@ my $conf = Conf::Yaml->new(
 
 #### GET OPTIONS
 my $queue;
-my $host		=	$conf->getKey( "mq:host", undef) || "localhost";
-my $port		=	$conf->getKey( "mq:port", undef) || 5672; 
-my $user		=	$conf->getKey( "mq:user", undef) || "guest";
-my $pass		=	$conf->getKey( "mq:pass", undef) || "guest";
-my $vhost		=	$conf->getKey( "mq:vhost", undef) || "/";
+my $host		=	$conf->getKey( "mq:host" ) || "localhost";
+my $port		=	$conf->getKey( "mq:port" ) || 5672; 
+my $user		=	$conf->getKey( "mq:user" ) || "guest";
+my $pass		=	$conf->getKey( "mq:pass" ) || "guest";
+my $vhost		=	$conf->getKey( "mq:vhost" ) || "/";
 my $help;
 
 GetOptions (
@@ -96,8 +88,7 @@ usage() if defined $help;
 #######################################################################################
 package Object;
 use Moose;
-with 'Exchange';
-with ('Logger', 'Exchange', 'Agua::Common::Database');
+with ('Util::Logger', 'Exchange');
 
 # Integers
 has 'showlog'	=>  ( isa => 'Int', is => 'rw', default => 2 );
@@ -118,6 +109,7 @@ has 'modules'	=> ( isa => 'ArrayRef|Undef', is => 'rw', lazy	=>	1, builder	=>	"s
 has 'conf'		=> ( isa => 'Conf::Yaml', is => 'rw', required	=>	0 );
 has 'db'		=> ( isa => 'Agua::DBase::MySQL', is => 'rw', required	=>	0 );
 has 'jsonparser'=> ( isa => 'JSON', is => 'rw', lazy	=>	1, builder	=>	"setJsonParser" );
+
 #######################################################################################
 
 my $object = Object->new({
@@ -133,7 +125,8 @@ my $object = Object->new({
     logfile     =>  $logfile
 });
 
-$object->receiveTask($queue);
+my $handler = "handleTask";
+$object->receiveTask( $queue, $handler );
 
 exit 0;
 

@@ -8,6 +8,8 @@ use AnyEvent;
 use Coro;
 use Net::RabbitMQ;
 use TryCatch;
+use Net::Address::IP::Local;
+use Sys::Hostname;
 
 #### Strings
 has 'apiroot'	=>	( isa => 'Str', is => 'rw', default => " http://localhost:55672/api/vhosts");
@@ -383,14 +385,12 @@ method newConnection {
 	my $password	=	$self->pass() ? $self->pass() : $self->conf()->getKey( "mq:pass" );
 	my $vhost		=	$self->vhost() ? $self->vhost() : $self->conf()->getKey( "mq:vhost" );
 	
-	$self->logDebug("host", $host);
-	$self->logDebug("user", $user);
-	$self->logDebug("password", $password);
-	$self->logDebug("vhost", $vhost);
+	# $self->logDebug("host", $host);
+	# $self->logDebug("user", $user);
+	# $self->logDebug("password", $password);
+	# $self->logDebug("vhost", $vhost);
 	
-	$self->logDebug("DOING Net::RabbitMQ->new()");
 	my $connection  = Net::RabbitMQ->new();
-	$self->logDebug("connection", $connection);
 
 	$connection->connect(
 		$host,
@@ -411,42 +411,26 @@ method newConnection {
 #### TASK
 method sendTask ($queuename, $data) {
 	$self->logDebug("queuename", $queuename);
-	$self->logDebug("data", $data);
+	# $self->logDebug("data", $data);
 
-    $|++;
+  # $|++;
 
 	my $host		=	$self->host() ? $self->host() : $self->conf()->getKey( "mq:host" );
 	my $user		= 	$self->user() ? $self->user() : $self->conf()->getKey( "mq:user" );
 	my $password	=	$self->pass() ? $self->pass() : $self->conf()->getKey( "mq:pass" );
 	my $vhost		=	$self->vhost() ? $self->vhost() : $self->conf()->getKey( "mq:vhost" );
 
-	$self->logDebug("host", $host);
-	$self->logDebug("user", $user);
-	$self->logDebug("password", $password);
-	$self->logDebug("vhost", $vhost);
-	
-	$self->logDebug("BEFORE Net::RabbitMQ->new()");
-	my $connection  = Net::RabbitMQ->new();
-	$self->logDebug("AFTER Net::RabbitMQ->new()");
-	$self->logDebug("connection", $connection);
+	# $self->logDebug("host", $host);
+	# $self->logDebug("user", $user);
+	# $self->logDebug("password", $password);
+	# $self->logDebug("vhost", $vhost);
 
-	$connection->connect(
-		$host,
-		{
-			port 		=>	5672,
-			host		=>	$host,
-			user 		=>	$user,
-			password 	=>	$password,
-			vhost		=>	$vhost
-		}
-	);
+	my $connection = $self->newConnection();
 	$self->logDebug("connection", $connection);
 
 	my $channelid = 1;
-	$self->logDebug("BEFORE channel");
-	my $channel = $connection->channel_open($channelid);
-	$self->logDebug("AFTER channel", $channel);
-
+	$connection->channel_open($channelid);
+	
 	$connection->queue_declare(
 		$channelid,
 		$queuename,
@@ -458,7 +442,7 @@ method sendTask ($queuename, $data) {
 	
 	my $parser 	= 	JSON->new->allow_nonref;
 	my $json 	=	$parser->encode($data);
-	$self->logDebug("json", $json);
+	$self->logDebug("json", substr( $json, 0, 100 ) );
 	# my $message		=	encode_json($data);
 	# $self->logDebug("message", $message);
 
@@ -471,7 +455,7 @@ method sendTask ($queuename, $data) {
 		}
 	);
 
-    print "Message sent to queue $queuename: $json\n";
+    print "Message sent to queue $queuename: " . substr( $json, 0, 100 ) . "\n";
 
 	$connection->disconnect();
 }
@@ -483,10 +467,10 @@ method receiveTask ($queuename, $handler) {
 
 	#### NB: (RECEIVER) QUEUENAME = ROUTING_KEY (SENDER)
 
-	my $host		=	$self->host() ? $self->host() : $self->conf()->getKey( "mq:host", undef);
-	my $user		= 	$self->user() ? $self->user() : $self->conf()->getKey( "mq:user", undef);
-	my $password	=	$self->pass() ? $self->pass() : $self->conf()->getKey( "mq:pass", undef);
-	my $vhost		=	$self->vhost() ? $self->vhost() : $self->conf()->getKey( "mq:vhost", undef);
+	my $host		=	$self->host() ? $self->host() : $self->conf()->getKey( "mq:host" );
+	my $user		= 	$self->user() ? $self->user() : $self->conf()->getKey( "mq:user" );
+	my $password	=	$self->pass() ? $self->pass() : $self->conf()->getKey( "mq:pass" );
+	my $vhost		=	$self->vhost() ? $self->vhost() : $self->conf()->getKey( "mq:vhost" );
 	
 	# $host = "localhost";
 
@@ -497,27 +481,12 @@ method receiveTask ($queuename, $handler) {
 	
 	
 	#### CONNECTION
-	$self->logDebug("BEFORE Net::RabbitMQ->new()");
-	my $connection  = Net::RabbitMQ->new();
-	$self->logDebug("AFTER Net::RabbitMQ->new()");
+	my $connection = $self->newConnection();
 	$self->logDebug("connection", $connection);
 
-	$connection->connect(
-		$host,
-	 	# {}
-		{
-			port 		=>	5672,
-			host		=>	$host,
-			user 		=>	$user,
-			password 	=>	$password,
-			vhost		=>	$vhost
-		}
-	);
-
-	my $channelid = 1;
-	my $channel = $connection->channel_open($channelid);
-	$self->logDebug("channel", $channel);
-
+	my $channelid = 1000;
+	$connection->channel_open($channelid);
+	
 	#### QUEUE DECLARE
 	$connection->queue_declare(
 		$channelid,
@@ -548,14 +517,64 @@ method receiveTask ($queuename, $handler) {
 		my $dtag  = $payload->{delivery_tag} ;
 		my ($sec) = ( $body =~ m{(\d+)} ) ;
 
-		print "[x] Received from queue $queuename: ", substr($body, 0, 400), "\n";
+		print "[x] Received from queue $queuename\n";
 
 		$self->$handler($body);
 
+		# $self->logDebug( "******************* DOING ack ******************* ");
 		$connection->ack($channelid,$dtag,) ;
 	}
 
+	# $self->logDebug( "******************* DOING disconnect ******************* ");
 	$connection->disconnect();
+}
+
+#### OVERRIDEN BY Worker
+#### USED BY receiveTask EXECUTABLE
+method handleTask ($json) {
+	$self->logDebug("$$ json", $json);
+	my $data = $self->parser()->decode($json);
+
+# my $sleeping = 500;
+# $self->logDebug("sleeping", $sleeping);
+# sleep($sleeping);
+
+	#### CHECK sendtype
+	my $sendtype = $data->{ sendtype };
+	$self->logDebug("sendtype", $sendtype);
+	if ( not defined $sendtype or $sendtype ne "task" ) {
+		print " [x] Received task: $json\n";
+		return;
+	}
+
+	$data->{ start }		=  	1;
+	$data->{ conf }		  =   $self->conf();
+	$data->{ log }		  =   $self->log();
+	$data->{ logfile }	=   $self->logfile();
+	$data->{ printlog }	=   $self->printlog();	
+	$data->{ worker }		=	  $self;
+
+	$self->setDbh() if not defined $self->db();
+
+	my $workflow = Agua::Workflow->new($data);
+
+	#### SET STATUS TO running
+	$self->conf()->setKey("agua", "STATUS", "running");
+
+	try {
+		$workflow->executeWorkflow($data);	
+	}
+	catch {
+		$self->logDebug("FAILED to handle task with json", $json);
+	}
+
+	#### SET STATUS TO completed
+	$self->conf()->setKey( "workflow:status", "completed");
+
+	#### SHUT DOWN TASK LISTENER IF SPECIFIED IN config.yml
+	$self->verifyShutdown();
+	
+	$self->logDebug("END handletask");
 }
 
 method startRabbitJs {
@@ -571,7 +590,6 @@ method stopRabbitJs {
 	
 	return `$command`;
 }
-
 
 method setChannel($name, $type) {
 	$self->channel()->declare_exchange(
@@ -610,22 +628,19 @@ method getArch {
 }
 
 method getIpAddress {
-	my $ipaddress	=	`facter ipaddress`;
-	$ipaddress		=~ 	s/\s+$//;
-	$self->logDebug("ipaddress", $ipaddress);
-	
+	my $ipaddress = Net::Address::IP::Local->public;
+	$self->logDebug( "ipaddress: **$ipaddress**" );
+
 	return $ipaddress;
 }
 
 method getHostname {
-	my $facter		=	`which facter`;
-	$facter			=~	s/\s+$//;
-	my $hostname	=	`$facter hostname`;
+	my $hostname = hostname;
+	$hostname =~ s/\+//g;
 	$hostname		=~	s/\s+$//g;
-	$hostname 		=~ 	s/\+//g;
-	$hostname		=	uc(substr($hostname, 0, 1)) . substr($hostname, 1);
-	$self->logDebug("hostname", $hostname);
-	
+	# $hostname		=	uc(substr($hostname, 0, 1)) . substr($hostname, 1);
+	$self->logDebug( "hostname", $hostname );
+
 	return $hostname;
 }
 
