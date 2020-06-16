@@ -6,7 +6,7 @@ log/*
 db.sqlite
 config.yml
 envars
-.pem
+*.pem
 *.dump
 .DS_Store
 
