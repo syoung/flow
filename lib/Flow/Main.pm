@@ -2249,7 +2249,7 @@ method launchVM ( $stageobject ) {
 	}
 
 
-#### INSERT INSTANCE DETAILS INTO DATABASE
+# ### INSERT INSTANCE DETAILS INTO DATABASE
 #   sqlite> .schema instancestatus
 # CREATE TABLE instancestatus
 # (
@@ -2266,7 +2266,7 @@ method launchVM ( $stageobject ) {
   
 #   PRIMARY KEY ( username, projectname, workflowname, stagename )
 # );
-	# $self->logDebug( "RETURNING stageobject", $stageobject, 1 );
+# 	$self->logDebug( "RETURNING stageobject", $stageobject, 1 );
 
 	return $stageobject;	
 } 

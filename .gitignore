@@ -1,6 +1,5 @@
 #### EXCLUDED FILES 
-ext/exchange
-ext/perl
+*.log
 apps/*
 log/*
 *~
