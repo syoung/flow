@@ -198,8 +198,8 @@ method maintainQueues($workflows) {
 method maintainQueue ($workflows, $workflowdata) {	
 	#$self->logDebug("workflowdata", $workflowdata);
 	
-	# my $queuename	=	$self->setQueueName($workflowdata);
-	# $self->logDebug("queuename", $queuename);
+	my $queuename	=	$self->setQueueName($workflowdata);
+	$self->logDebug("queuename", $queuename);
 	
 	my $workflowcompleted	=	$self->workflowCompleted($workflowdata);
 	$self->logDebug("workflowcompleted", $workflowcompleted);
@@ -534,7 +534,7 @@ method setQueueName ($task) {
 	my $username	=	$task->{username};
 	my $project		=	$task->{projectname};
 	my $workflow	=	$task->{workflowname};
-	my $queue		=	"$username.$project.$workflow";
+	my $queue		=	"$username.$project.$workflow.queue";
 	#$self->logDebug("queue", $queue);
 	
 	return $queue;	
@@ -553,10 +553,10 @@ method notDefined ($hash, $fields) {
 
 #### JOB STATUS
 method updateJobStatus ($data) {
-	#$self->logDebug("data", $data);
-	$self->logDebug("$data->{sample} $data->{status}");
+	$self->logDebug("data", $data);
+	# $self->logDebug( "$data->{status}", $data->{status} );
 
-	my $keys	=	[ "username", "project", "workflow", "workflownumber", "sample" ];
+	my $keys	=	[ "username", "projectname", "workflowname", "workflownumber", "sample" ];
 	my $notdefined	=	$self->notDefined($data, $keys);	
 	$self->logDebug("notdefined", $notdefined) and return if @$notdefined;
 

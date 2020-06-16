@@ -83,10 +83,10 @@ has 'password'        => ( isa => 'Str|Undef', is => 'rw', required => 0 );
 
 #### Obj
 has 'apps'	          => ( isa => 'ArrayRef[Flow::App]', is => 'rw', default => sub { [] } );
-has 'fields'          => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'prescript', 'profiles', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'outputdir', 'field', 'value', 'wkfile', 'outputfile', 'cmdfile', 'start', 'stop', 'appnumber', 'paramname', 'from', 'to', 'status', 'started', 'stopped', 'duration', 'epochqueued', 'epochstarted', 'epochstopped', 'epochduration', 'format', 'log', 'printlog', 'inputfile', 'outputfile', 'appfile'] } );
-has 'savefields'      => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'prescript', 'profiles', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'status', 'started', 'stopped', 'duration', 'locked'] } );
+has 'fields'          => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'prescript', 'profiles', 'profilename', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'outputdir', 'field', 'value', 'wkfile', 'outputfile', 'cmdfile', 'start', 'stop', 'appnumber', 'paramname', 'from', 'to', 'status', 'started', 'stopped', 'duration', 'epochqueued', 'epochstarted', 'epochstopped', 'epochduration', 'format', 'log', 'printlog', 'inputfile', 'outputfile', 'appfile'] } );
+has 'savefields'      => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', default => sub { [ 'prescript', 'profiles', 'profilename', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'status', 'started', 'stopped', 'duration', 'locked'] } );
 has 'exportfields'    => ( isa => 'ArrayRef[Str|Undef]', is => 'rw', 
-	default => sub { [ 'prescript', 'profiles', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'status', 'started', 'stopped', 'duration', 'provenance'] } );
+	default => sub { [ 'prescript', 'profiles', 'profilename', 'username', 'projectname', 'workflowname', 'workflownumber', 'owner', 'description', 'notes', 'status', 'started', 'stopped', 'duration', 'provenance'] } );
 has 'hash'		        => ( isa => 'HashRef|Undef', is => 'rw', required => 0 );
 has 'args'		        => ( isa => 'HashRef|Undef', is => 'rw', default => sub { return {}; } );
 has 'db'		          => ( isa => 'Any', is => 'rw', required => 0 );
@@ -509,26 +509,32 @@ method saveWorkflowToDatabase ($workflowobject) {
 	my $projectname 	= 	$workflowobject->projectname();
 	my $workflowname 	= 	$workflowobject->workflowname();
 	my $workflownumber 	= 	$workflowobject->workflownumber();
+	$self->logDebug( "workflowname", $workflowname );
 	$self->logDebug("username", $username);	
-	my $workflowprofilename = $workflowobject->profilename();
-
+	
 	#### SKIP IF WORKFLOW ALREADY EXISTS
 	my $workflowdata = $workflowobject->exportData();
 	$workflowdata->{username}	=	$username;
 	$workflowdata->{owner}		=	$username;
-	$self->logDebug("Number of apps", scalar(@{$workflowdata->{apps}}) );
+	$self->logDebug("Number of apps", scalar( @{ $workflowdata->{ apps } } ) );
 	delete $workflowdata->{apps};
 	$self->logDebug("workflowdata", $workflowdata);
 	my $keys = ['owner', 'username', 'projectname', 'workflowname', 'workflownumber'];
 	
 	my $profiles = $workflowdata->{profiles};
-	my $profilename = $workflowdata->{profilename};
-	$self->logDebug( " ************ DOING Util::Profile->new() ************ " );
-
+	my $workflowprofilename = $workflowobject->profilename();
 	$self->logDebug( "profiles", $profiles );
-	$self->logDebug( "profilename", $profilename );
+	$self->logDebug( "workflowprofilename", $workflowprofilename );
+$self->logDebug( " ************ DOING Util::Profile->new() ************ " );
 
-	my $profile = Util::Profile->new( profilestring => $profiles,	profilename => $profilename );
+	my $profile = Util::Profile->new( 
+		log           => $self->log(),
+		printlog      => $self->printlog(),
+		profilestring => $profiles,	
+		profilename   => $workflowprofilename 
+	);
+
+	$self->logDebug( "profile", $profile );
 
 	if ( defined $profile->profilehash() ) {
 		$workflowdata = $profile->insertProfileValues( $workflowdata );
@@ -561,10 +567,10 @@ method saveWorkflowToDatabase ($workflowobject) {
 		my $stageprofilename   =  $stageobject->{ profilename };
 		if ( not $stageprofilename ) {
 			$stageprofilename = $workflowprofilename;
-			$stageobject->{ profilename } = $stageprofilename;
 		}
-		$self->logDebug( "profilename", $stageprofilename );
-		if ( defined $profilename ) {
+		$self->logDebug( "stageprofilename", $stageprofilename );
+		if ( defined $stageprofilename ) {
+			$stageobject->{ profilename } = $stageprofilename;
 			$profile->setProfileHash( $stageprofilename );
 		}
 

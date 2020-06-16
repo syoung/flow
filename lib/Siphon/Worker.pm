@@ -22,9 +22,8 @@ has 'printlog'	=>  ( isa => 'Int', is => 'rw', default => 5 );
 has 'sleep'		=>  ( isa => 'Int', is => 'rw', default => 300 );
 
 # Strings
-has 'processname' => ( is => 'Str', is => 'rw', default => "heartbeat" );
-has 'queuename'  =>  ( isa => 'Str', is => 'rw', default => "outbound.job.queue" );
-# has 'sendtype'	=> ( isa => 'Str|Undef', is => 'rw', default	=>	"report" );
+has 'processname' => ( is => 'Str', is => 'rw', default => "worker" );
+has 'queuename'  =>  ( isa => 'Str', is => 'rw', default => "" );
 has 'database'	=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
 has 'user'		=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
 has 'pass'		=> ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
@@ -104,6 +103,11 @@ method run ($args) {
 		);
 		$self->conf($conf);
 	}
+
+	#### GET QUEUE NAME FROM config.yml
+	my $queuename = $self->conf()->getKey( "mq:queuename" );
+	$self->logDebug( "queuename", $queuename );
+	$self->queuename( $queuename );
 
 	if ( scalar(@$args) == 0 or $$args[0] =~ /^-/ ) {
 		$self->listen();
@@ -230,37 +234,9 @@ method stageFactory ( $stage ) {
 	my $profilehash = $stage->{profile};
 	$self->logDebug( "profilehash", $profilehash );
 
-	my $profile = Util::Profile->new();
-	$profile->profilehash( $profilehash );
-
-	my $runtype = $profile->getProfileValue( "run:type" );
-	$runtype = "Shell" if not $runtype;
-	my $hostname = $profile->getProfileValue( "host:name" );
-	$hostname = "Local" if not $hostname;
-	my $virtual = $profile->getProfileValue( "virtual" );
-	$virtual = "Local" if not $virtual;
-	$self->logDebug( "runtype", $runtype );
-	$self->logDebug( "hostname", $hostname );
-	$self->logDebug( "virtual", $virtual );
-
-	my $hosttype = $self->getHostType( $hostname, $virtual );
-	$self->logDebug( "hosttype", $hosttype );
-
-#### MONITOR IS CREATED BY Monitor::Factory BASED ON
-#### VALUE OF run:type:scheduler
-
-  # #### GET MONITOR
-  # $self->logDebug( "BEFORE monitor = self->updateMonitor()" );
-  # my $monitor  =   undef;
-  # $monitor = $self->updateMonitor();
-  # $self->logDebug( "AFTER XXX monitor = self->updateMonitor()" );
-
-  $hosttype = $self->cowCase( $hosttype );
-  $runtype = $self->cowCase( $runtype );
-  print "Engine::Workflow    runtype: $runtype\n";
-  print "Engine::Workflow    hosttype: $hosttype\n";
-
-  my $location    = "$Bin/../../Engine/$hosttype/$runtype/Stage.pm";
+  my $hosttype = "Remote";
+  my $runtype  = "Queue";
+  my $location    = "$Bin/../../../Engine/$hosttype/$runtype/Stage.pm";
   $self->logDebug( "location", $location );
   my $class          = "Engine::" . $hosttype . "::" . $runtype . "::Stage";
   require $location;

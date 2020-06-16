@@ -128,7 +128,6 @@ method stageParameterToDatabase ( $username, $package, $installdir, $stageobject
     return undef;
   }
 
-
   #### REMOVE STAGE PARAMETER
   $self->table()->_deleteStageParameter($paramdata);
 

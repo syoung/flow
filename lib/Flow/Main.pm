@@ -2204,12 +2204,12 @@ method launchVM ( $stageobject ) {
   $self->logDebug( "profilehash", $profilehash );
   return $stageobject if not defined $profilehash;
 
-	my $profiler = Util::Profile->new();
-	$profiler->profilehash( $profilehash );
+	my $profile = Util::Profile->new();
+	$profile->profilehash( $profilehash );
 
-  return $stageobject if not defined $profiler->getProfileValue( "virtual" );
+  return $stageobject if not defined $profile->getProfileValue( "virtual" );
 
-  my $virtualtype = $profiler->getProfileValue( "virtual:type" );
+  my $virtualtype = $profile->getProfileValue( "virtual:type" );
   $self->logDebug( "virtualtype", $virtualtype );
   my $virtual = $self->setVirtual( $virtualtype );
   # $self->logDebug( "self->virtual()", $self->virtual() );
@@ -2218,23 +2218,23 @@ method launchVM ( $stageobject ) {
 
   #### GET VALUES UPDATED BY getProfileValue
   $profilehash      =    $stageobject->{ profilehash };
-  my $ipaddress = $profiler->getProfileValue( "instance:ipaddress", $profilehash );
+  my $ipaddress = $profile->getProfileValue( "instance:ipaddress" );
   $self->logDebug( "ipaddress", $ipaddress );
 
   #### LAUNCH NODE IF NO IPADDRESS FOUND
-  if ( not defined $ipaddress ) {
+  # if ( not defined $ipaddress ) {
   	$self->logDebug( "DOING virtual->launchNode( stageobject )" );
 		$stageobject = $virtual->launchNode( $stageobject );
-  	$ipaddress = $profiler->getProfileValue( "instance:ipaddress", $stageobject->{ profilehash } );
+  	$ipaddress = $profile->getProfileValue( "instance:ipaddress", $stageobject->{ profilehash } );
   	$self->logDebug( "ipaddress", $ipaddress );
-  }
+  # }
 
   #### GET VALUES UPDATED BY launchNode
   $profilehash      =    $stageobject->{ profilehash };
   # $self->logDebug( "profilehash", $profilehash );
 
-  my $instanceid = $profiler->getProfileValue( "instance:id" );
-  my $instancename = $profiler->getProfileValue( "instance:name" );
+  my $instanceid = $profile->getProfileValue( "instance:id" );
+  my $instancename = $profile->getProfileValue( "instance:name" );
 
 	$self->logDebug("instanceid", $instanceid);
 	$self->logDebug("instancename", $instancename);

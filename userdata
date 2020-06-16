@@ -1,0 +1,66 @@
+#!/bin/bash
+
+INSTALLDIR=/flow
+
+#### LOG
+logfile="/userdata.log"
+sudo rm -fr $logfile
+exec > >(tee $logfile ) 2>&1
+
+echo "Current date and time" >> /out 
+echo -e `date` >> /out
+echo -e `hostname` >> /out
+echo -e "\n\n" >> /out
+
+#### INSTALL flow
+echo "Installing flow in installdir: $INSTALLDIR"
+rm -fr $INSTALLDIR
+
+git clone https://github.com/syoung/flow $INSTALLDIR
+$INSTALLDIR/install
+
+#### AWS CONFIG FILE
+echo "Creating file: ~/.aws/credentials" >> /out
+mkdir -p /home/ubuntu/.aws
+cat <<EOF > /home/ubuntu/.aws/credentials
+[default]
+aws_access_key_id=AKIAT75IRGCILZWMBRO2
+aws_secret_access_key=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
+EOF
+
+echo "Creating file: ~/.aws/config" >> /out
+cat <<EOF > /home/ubuntu/.aws/config
+[default]
+region = us-east-1
+format = json
+EOF
+
+chown -R ubuntu:ubuntu /home/ubuntu/.aws
+
+#### DEPENDENCIES
+echo "Updating apt"
+apt update -qq
+for app in git facter unzip curl emacs zip awscli htop jq; do    
+    echo "Installing $app"
+    apt-get install $app -y
+done
+
+#### CONFIG
+sudo /flow/lib/Conf/bin/config --mode setKey --key shutdown --value false
+
+#### RABBITMQ
+sudo /flow/lib/Conf/bin/config --mode setKey --key mq:host --value 192.168.1.16
+sudo /flow/lib/Conf/bin/config --mode setKey --key mq:port --value 5672
+sudo /flow/lib/Conf/bin/config --mode setKey --key mq:user --value rabbituser
+sudo /flow/lib/Conf/bin/config --mode setKey --key mq:pass --value runrabit%2
+sudo /flow/lib/Conf/bin/config --mode setKey --key mq:vhost --value rabbitvhost
+
+sudo /flow/lib/Conf/bin/config --mode setKey --key mq:queuename --value root.test.sleep.queue
+
+#### START DAEMONS
+echo "Starting heartbeat"
+$INSTALLDIR/bin/install/heartbeat.sh $INSTALLDIR
+echo "Starting worker"
+$INSTALLDIR/bin/install/worker.sh $INSTALLDIR
+
+echo "**** COMPLETED userdata.sh"

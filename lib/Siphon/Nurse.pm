@@ -43,8 +43,8 @@ use Test::More;
 use Conf::Yaml;
 use Table::Main;
 use Virtual::Factory;
-use sigtrap 'handler' => *Siphon::Listener::killProcesses, 'stack-trace', 'error-signals';
-# use TryCatch;
+use sigtrap 'handler' => *Siphon::Nurse::killProcesses, 'stack-trace', 'error-signals';
+use TryCatch;
 
 # Integers
 has 'log'	=>  ( isa => 'Int', is => 'rw', default => 4 );
@@ -54,7 +54,7 @@ has 'sleep'		   =>  ( isa => 'Int', is => 'rw', default => 1 );
 has 'messages'	 =>  ( isa => 'Int', is => 'rw', default => 0 );
 
 # Strings
-has 'processname' => ( is => 'Str', is => 'rw', default => "listener" );
+has 'processname' => ( is => 'Str', is => 'rw', default => "nurse" );
 has 'queuename'	=> ( isa => 'Str|Undef', is => 'rw', default	=>	"inbound.host.heartbeat" );
 has 'metric'	   => ( isa => 'Str|Undef', is => 'rw', default	=>	"cpus" );
 has 'user'		   => ( isa => 'Str|Undef', is => 'rw', required	=>	0 );
@@ -155,7 +155,7 @@ method listen {
 	$self->logDebug("");
 	
 	my $queuename	=	$self->queuename();
-	my $handler 	=	*Siphon::Listener::handleTask;
+	my $handler 	=	*Siphon::Nurse::handleTask;
 	$self->receiveTask( $queuename, $handler );
 }
 
@@ -166,14 +166,14 @@ method handleTask ($json) {
 	#$self->logDebug("data", $data);
 
 	my $mode =	$data->{mode} || "";
-	$self->logDebug("mode", $mode);s
+	$self->logDebug("mode", $mode);
 
 	try {
-		print "INSIDE TRY\n";
+		print "INSIDE TRY ***************\n";
 		$self->$mode($data);		
 	}
 	catch {
-		print "INSIDE CATCH\n";
+		print "INSIDE CATCH ***************\n";
 		$self->logCritical( "Failed to handle task mode: $mode\n" );
 		print "Failed to handle task mode: $mode\n";
 	}
@@ -231,7 +231,31 @@ method updateHeartbeat ($data) {
 	}
 	catch {
 		print "FAILED TO ADD TO TABLE: $table\n";
+		$self->addToFailed( $data );
 	}
+}
+
+method addToFailed( $data ) {
+	$self->logDebug( "data", $data );
+
+	my $time = $data->{ time };
+	my $host = $data->{ host };
+	my $parser = JSON->new();
+	my $message = $parser->pretty->indent->encode( $data );
+
+	my $entry = {
+		host    => $host,
+		time    => $time,
+		message => $message
+	};
+
+	#### ADD TO TABLE
+	my $table		=	"failed";
+	my $keys    = [ "host", "time", "message" ];
+	my $fields		=	$self->table()->db()->fields($table);
+	$self->logDebug( "keys", $keys );
+	$self->logDebug( "fields", $fields );
+	$self->table()->_addToTable($table, $entry, $keys, $fields);
 }
 
 method updateProvenance ($data) {
@@ -351,7 +375,19 @@ method setVirtual {
 	$self->virtual($virtual);
 }
 
-	
+END {
+	print "IN Siphon::Nurse::END ***************************\n";
+
+	my $processname = "nurse";
+	print "Processesname: $processname\n";
+	# $self->logDebug( "processname", $processname );
+	my $processid = $$;
+	print "Processid: $processid\n";
+	# $self->logDebug( "processid", $processid );
+	my $ps = "ps aux | grep $processname | grep -v $processid | tr -s ' '| cut -f 2 -d \" \" | xargs -L 1 kill -9";
+	print `$ps`;
+
+}	
 	
 	
 }

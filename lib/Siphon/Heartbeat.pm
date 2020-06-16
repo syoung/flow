@@ -34,7 +34,7 @@ use Table::Main;
 # Integers
 has 'log'	=> ( isa => 'Int', 		is => 'rw', default	=> 	2	);  
 has 'printlog'	=> ( isa => 'Int', 		is => 'rw', default	=> 	2	);
-has 'sleep'		=>  ( isa => 'Int', is => 'rw', default => 60 );
+has 'sleep'		=>  ( isa => 'Int', is => 'rw', default => 6 );
 
 # Strings
 has 'processname' => ( is => 'Str', is => 'rw', default => "heartbeat" );
