@@ -19,3 +19,9 @@
 [submodule "lib/Virtual"]
 	path = lib/Virtual
 	url = https://github.com/syoung/flow-virtual
+[submodule "ext/exchange"]
+	path = ext/exchange
+	url = https://github.com/syoung/flow-ext-exchange
+[submodule "ext/perl"]
+	path = ext/perl
+	url = https://github.com/syoung/flow-ext-perl
